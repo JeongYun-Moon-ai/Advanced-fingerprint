@@ -1,0 +1,41 @@
+{
+  "name": "advanced-fingerprinting",
+  "version": "1.0.0",
+  "description": "다중 계층 엔트로피 융합 기반 고정밀 디바이스 핑거프린팅 라이브러리",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "fingerprinting",
+    "device-id",
+    "privacy",
+    "security",
+    "mems",
+    "sensor",
+    "biometrics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/advanced-fingerprinting.git"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "rollup": "^4.0.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  }
+}
