@@ -24,11 +24,15 @@ npm run format           # Prettier format
 
 ### Python Package (packages/python)
 ```bash
-pip install -e ".[dev]"  # Install with dev dependencies
+pip install -e ".[dev]"  # Install with dev dependencies (pytest, black, isort, mypy)
 pytest                   # Run tests
-black src                # Format code
-isort src                # Sort imports
-mypy src                 # Type checking
+black src                # Format code (line-length=100)
+isort src                # Sort imports (profile=black)
+mypy src                 # Type checking (strict mode)
+
+# Optional dependencies
+pip install -e ".[ml]"   # ML features (scikit-learn, tensorflow)
+pip install -e ".[redis]" # Redis storage support
 ```
 
 ## Architecture
@@ -75,11 +79,17 @@ Removed due to noise in incognito mode:
 
 ### Key Classes
 
-- `Fingerprinter` (packages/web/src/index.ts): Main SDK entry point
+**Web SDK (packages/web/src/index.ts)**:
+- `Fingerprinter`: Main SDK entry point
 - `generateHardwareHash()`: Core function for hardware-based fingerprinting
 - `getStableWebGLInfo()`: Extracts stable WebGL constants
 - `BehavioralTracker`: Collects touch, keystroke, gait data (optional)
 - `FingerprintUtils`: SHA-256 hashing, FFT, statistical functions
+
+**Python SDK (packages/python/src/__init__.py)**:
+- `Fingerprinter`: Server-side fingerprint generation
+- `Validator`: Fingerprint registration and verification
+- `get_fingerprint()`: Convenience function
 
 ### Fingerprint Interface
 

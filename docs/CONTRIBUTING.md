@@ -12,12 +12,49 @@
 # 저장소 포크 후 클론
 git clone https://github.com/YOUR_USERNAME/advanced-fingerprinting.git
 cd advanced-fingerprinting
+```
+
+### Web 패키지 (TypeScript)
+
+```bash
+cd packages/web
 
 # 의존성 설치
 npm install
 
-# 개발 서버 실행
+# 개발 서버 실행 (watch 모드)
 npm run dev
+
+# 빌드
+npm run build
+
+# 테스트
+npm run test
+
+# 린트
+npm run lint
+
+# 코드 포맷팅
+npm run format
+```
+
+### Python 패키지
+
+```bash
+cd packages/python
+
+# 개발 의존성 포함 설치
+pip install -e ".[dev]"
+
+# 테스트
+pytest
+
+# 코드 포맷팅
+black src
+isort src
+
+# 타입 검사
+mypy src
 ```
 
 ### 브랜치 전략
@@ -145,56 +182,65 @@ Closes #
 
 새로운 핑거프린팅 모듈을 추가하려면:
 
-### 1. 모듈 인터페이스 구현
+### 1. 새 신호 추가 (CrossBrowserSignals)
 
 ```typescript
-// packages/core/src/modules/your-module.ts
-import { BaseModule, ModuleSignature } from '../types';
+// packages/web/src/index.ts
 
-export class YourModule extends BaseModule {
-  readonly name = 'your-module';
-  readonly layer = 'physical'; // 'physical' | 'temporal' | 'behavioral'
-  
-  async analyze(): Promise<ModuleSignature> {
-    // 분석 로직 구현
-    return {
-      type: this.name,
-      data: { /* ... */ },
-      confidence: 0.95
-    };
-  }
+// 1. CrossBrowserSignals 인터페이스에 신호 추가
+export interface CrossBrowserSignals {
+  // ... 기존 신호들 ...
+  /** 새로운 하드웨어 신호 */
+  yourNewSignal: string;
 }
+
+// 2. generateHardwareHash()에서 신호 수집 및 해시에 포함
+private async generateHardwareHash(signatures: LayerDetails) {
+  const signals: CrossBrowserSignals = {
+    // ... 기존 신호들 ...
+    yourNewSignal: this.collectYourSignal(),
+  };
+
+  // 해시 데이터에 포함
+  const stableData = [
+    // ... 기존 데이터 ...
+    signals.yourNewSignal,
+  ].join('|');
+}
+
+// 3. CROSS_BROWSER_ACCURACY_WEIGHTS에 가중치 추가
+const CROSS_BROWSER_ACCURACY_WEIGHTS = {
+  // ... 기존 가중치 ...
+  YOUR_NEW_SIGNAL: 0.05,  // 가중치 (총합 <= 0.80)
+};
 ```
 
 ### 2. 테스트 작성
 
 ```typescript
-// packages/core/src/modules/__tests__/your-module.test.ts
-import { YourModule } from '../your-module';
+// packages/web/src/__tests__/fingerprinter.test.ts
+describe('Fingerprinter', () => {
+  it('should include yourNewSignal in signals', async () => {
+    const fp = new Fingerprinter();
+    const result = await fp.generate();
 
-describe('YourModule', () => {
-  it('should generate consistent signatures', async () => {
-    const module = new YourModule();
-    const sig1 = await module.analyze();
-    const sig2 = await module.analyze();
-    
-    expect(sig1.type).toBe('your-module');
-    expect(sig1.confidence).toBeGreaterThan(0.8);
+    expect(result.signals.yourNewSignal).toBeDefined();
   });
 });
 ```
 
-### 3. 모듈 등록
+### 3. 크로스-브라우저 검증
 
-```typescript
-// packages/core/src/index.ts
-export { YourModule } from './modules/your-module';
-```
+새 신호 추가 시 필수 테스트:
+1. Chrome 일반 모드 vs Chrome 시크릿 모드 → 동일 값
+2. Chrome vs Safari vs Firefox → 동일 값
+3. iOS Safari vs Android Chrome → 동일 값 (모바일)
 
 ### 4. 문서 업데이트
 
-- README.md의 지원 모듈 테이블 업데이트
-- API_REFERENCE.md에 모듈 API 추가
+- README.md의 하드웨어 신호 테이블 업데이트
+- docs/API_REFERENCE.md의 CrossBrowserSignals 업데이트
+- docs/ARCHITECTURE.md의 신호 가중치 테이블 업데이트
 
 ---
 

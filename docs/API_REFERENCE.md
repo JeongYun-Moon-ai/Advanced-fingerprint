@@ -164,13 +164,24 @@ interface FingerprintConfig {
     behavioral: number;
     mobile: number;
   };
-  timeout?: number;         // 기본: 15000ms
-  debug?: boolean;          // 기본: false
-  samplingDuration?: number; // 기본: 2000ms
-  enableGait?: boolean;
-  enablePRNU?: boolean;
+  timeout?: number;              // 기본: 15000ms
+  debug?: boolean;               // 기본: false
+  samplingDuration?: number;     // 기본: 2000ms
+  enableGait?: boolean;          // 기본: false (권한 필요 - iOS 센서)
+  enablePRNU?: boolean;          // 기본: false (권한 필요 - 카메라)
+  enableGeolocation?: boolean;   // 기본: false (권한 필요 - 위치)
+  enableMEMSPermission?: boolean; // 기본: false (권한 필요 - iOS MEMS 센서)
 }
 ```
+
+### 권한 필요 옵션
+
+| 옵션 | 권한 | 설명 |
+|------|------|------|
+| `enableGait` | iOS 센서 | 보행 패턴 분석 |
+| `enablePRNU` | 카메라 | 카메라 센서 노이즈 분석 |
+| `enableGeolocation` | 위치 | GPS 위치 정보 수집 |
+| `enableMEMSPermission` | iOS 센서 | iOS에서 MEMS 센서 접근 |
 
 ---
 
@@ -255,3 +266,72 @@ interface CrossBrowserSignals {
 |--------|----------|-------------|--------|
 | iOS | Safari | 100회 | **99%+** |
 | Android | Chrome | 100회 | **99%+** |
+
+---
+
+## Python SDK
+
+서버사이드에서 핑거프린트 검증 및 저장에 사용합니다.
+
+### 설치
+
+```bash
+pip install advanced-fingerprinting
+
+# Optional dependencies
+pip install advanced-fingerprinting[ml]    # ML 기능
+pip install advanced-fingerprinting[redis] # Redis 저장소
+pip install advanced-fingerprinting[dev]   # 개발 도구
+```
+
+### 기본 사용법
+
+```python
+from advanced_fingerprinting import Fingerprinter, get_fingerprint
+
+# 간단한 사용
+fp = get_fingerprint()
+print(fp.hash)        # SHA-256 해시
+print(fp.confidence)  # 신뢰도 (0-1)
+
+# 고급 사용
+fingerprinter = Fingerprinter()
+result = fingerprinter.generate()
+```
+
+### Validator 클래스
+
+핑거프린트 등록 및 검증을 위한 클래스입니다.
+
+```python
+from advanced_fingerprinting import Validator
+
+validator = Validator()
+
+# 등록
+validator.register("device_123", "hash_abc...")
+
+# 검증
+result = validator.verify("device_123", "hash_abc...")
+print(result)
+# {'is_valid': True, 'reason': 'match', 'confidence': 1.0}
+```
+
+### Python 타입 정의
+
+```python
+@dataclass
+class FingerprintConfig:
+    layers: Dict[str, bool]   # {"physical": True, "temporal": True, "behavioral": False}
+    weights: Dict[str, float] # {"physical": 0.5, "temporal": 0.3, "behavioral": 0.2}
+    timeout: int = 10000
+    debug: bool = False
+
+@dataclass
+class Fingerprint:
+    hash: str
+    timestamp: float
+    confidence: float
+    modules: List[str]
+    details: Optional[Dict[str, Any]] = None
+```

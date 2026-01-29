@@ -119,3 +119,51 @@ const CROSS_BROWSER_ACCURACY_WEIGHTS = {
 - 모든 데이터는 온디바이스 처리
 - 비가역적 해시만 서버 전송
 - IP/위치 히스토리는 로컬에만 저장
+
+---
+
+## 6. 패키지 구조
+
+```
+Advanced_Fingerprinting/
+├── packages/
+│   ├── web/                 # Web SDK (TypeScript)
+│   │   ├── src/
+│   │   │   └── index.ts     # 메인 Fingerprinter 클래스
+│   │   ├── dist/            # 빌드 출력
+│   │   └── package.json
+│   │
+│   └── python/              # Python SDK
+│       ├── src/
+│       │   └── __init__.py  # Fingerprinter, Validator 클래스
+│       └── pyproject.toml
+│
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── API_REFERENCE.md
+│   └── CONTRIBUTING.md
+│
+├── CLAUDE.md                # Claude Code 가이드
+└── README.md
+```
+
+### Web SDK vs Python SDK
+
+| 기능 | Web SDK | Python SDK |
+|------|---------|------------|
+| 하드웨어 신호 수집 | ✅ (브라우저) | ❌ (서버사이드) |
+| 크로스-브라우저 해시 | ✅ | ❌ |
+| 핑거프린트 검증 | ❌ | ✅ (Validator) |
+| 서버 저장/관리 | ❌ | ✅ |
+| ML 기능 | ❌ | ✅ (옵션) |
+
+### 일반적인 통합 패턴
+
+```
+┌─────────────┐    해시 전송    ┌─────────────┐
+│  Web SDK    │ ──────────────→ │ Python SDK  │
+│ (클라이언트) │               │  (서버)      │
+│             │               │             │
+│ getFingerprint()           │ Validator.verify()
+└─────────────┘               └─────────────┘
+```
