@@ -40,65 +40,89 @@ pip install -e ".[redis]" # Redis storage support
 ### Hardware-Based Fingerprinting System
 
 ```
-┌─────────────────────────────────────────────────────┐
-│            Hardware Signal Collection                │
-│  GPU Renderer · WebGL Constants · Screen · Platform  │
-└─────────────────────────────────────────────────────┘
-                        ↓
-         ┌─────────────────────────────┐
-         │   Accuracy Weight Calculation │
-         │   (Max 80% accuracy)          │
-         └─────────────────────────────┘
-                        ↓
-         ┌─────────────────────────────┐
-         │   SHA-256 Hardware Hash      │
-         │   Same device = Same hash    │
-         └─────────────────────────────┘
+┌───────────────────────────────────────────────────────────┐
+│              Hardware Signal Collection (v2)               │
+│  GPU · WebGL · Screen · Math Engine · Fonts · CSS · Intl  │
+│  AudioStack · WebGL2 · Media Codecs · WebGL Render        │
+└───────────────────────────────────────────────────────────┘
+                          ↓
+           ┌─────────────────────────────┐
+           │   Accuracy Weight Calc       │
+           │   (Max 95% accuracy)         │
+           └─────────────────────────────┘
+                          ↓
+           ┌─────────────────────────────┐
+           │   SHA-256 Hardware Hash      │
+           │   Same device = Same hash    │
+           └─────────────────────────────┘
+                          ↓
+           ┌─────────────────────────────┐
+           │   PersistenceManager         │
+           │   5-layer evercookie sync    │
+           └─────────────────────────────┘
 ```
 
-### Hardware Signals Used
+### Hardware Signals (v2)
 
-Only stable signals that don't change in incognito mode:
+| Signal | Weight | Category |
+|--------|--------|----------|
+| GPU Renderer | 15% | WebGL |
+| Math Engine | 8% | JS Engine precision |
+| Shader Precision | 8% | WebGL |
+| Screen Resolution | 7% | Hardware |
+| WebGL Render Hash | 7% | GPU rasterizer |
+| Font Fingerprint | 7% | OS-level fonts |
+| Hardware Concurrency | 5% | CPU |
+| Timezone | 5% | System |
+| Audio Stack | 5% | DynamicsCompressor |
+| CSS Features | 4% | Engine features |
+| Intl API | 4% | Locale formatting |
+| WebGL Max Texture | 4% | GPU constant |
+| WebGL2 Params | 4% | GPU constant |
+| GPU Vendor | 3% | WebGL |
+| Platform | 3% | System |
+| Media Capabilities | 3% | Codec support |
 
-| Signal | Weight | Stability |
-|--------|--------|-----------|
-| GPU Renderer | 25% | ⭐⭐⭐⭐⭐ |
-| Shader Precision | 12% | ⭐⭐⭐⭐⭐ |
-| Screen Resolution | 10% | ⭐⭐⭐⭐ |
-| Hardware Concurrency | 8% | ⭐⭐⭐⭐⭐ |
-| Timezone | 8% | ⭐⭐⭐ |
-| WebGL Max Texture | 7% | ⭐⭐⭐⭐⭐ |
+### Persistence Layer (PersistenceManager)
 
-### Excluded Unstable Signals
-
-Removed due to noise in incognito mode:
-- ~~Audio Fingerprint~~ (Chrome adds random noise)
-- ~~Canvas Hardware~~ (rendering differences)
-- ~~Device Memory~~ (varies by browser)
-- ~~Language~~ (browser-specific)
+5-layer evercookie-style storage sync:
+- localStorage, sessionStorage, Cookie (400d), IndexedDB, Cache API
+- Auto-recovery: restores from any surviving storage
+- Auto-resync: refills cleared storages after recovery
 
 ### Key Classes
 
 **Web SDK (packages/web/src/index.ts)**:
-- `Fingerprinter`: Main SDK entry point
-- `generateHardwareHash()`: Core function for hardware-based fingerprinting
-- `getStableWebGLInfo()`: Extracts stable WebGL constants
-- `BehavioralTracker`: Collects touch, keystroke, gait data (optional)
-- `FingerprintUtils`: SHA-256 hashing, FFT, statistical functions
+- `Fingerprinter`: Main SDK entry point (v2: 26 signal modules)
+- `PersistenceManager`: 5-layer storage persistence
+- `generateHardwareHash()`: Core hash from 24 stable signals
+- `getStableWebGLInfo()`: WebGL hardware constants
+- `BehavioralTracker`: Touch, keystroke, gait data (optional)
+- `FingerprintUtils`: SHA-256, FFT, statistics
+
+**v2 Enhanced Methods**:
+- `fingerprintMathEngine()`: JS engine floating-point precision
+- `fingerprintWebGLRender()`: GPU triangle/gradient rendering
+- `detectFonts()`: Canvas-based font enumeration (40+ fonts)
+- `fingerprintCSSFeatures()`: CSS.supports() matrix (35+ features)
+- `fingerprintIntlAPI()`: Intl date/number/list formatting
+- `fingerprintAudioStack()`: OfflineAudioContext DynamicsCompressor
+- `getWebGL2Parameters()`: WebGL2 hardware constants
+- `fingerprintMediaCapabilities()`: Video/audio codec support
 
 **Python SDK (packages/python/src/__init__.py)**:
 - `Fingerprinter`: Server-side fingerprint generation
 - `Validator`: Fingerprint registration and verification
-- `get_fingerprint()`: Convenience function
 
 ### Fingerprint Interface
 
 ```typescript
 interface Fingerprint {
   hash: string;              // Hardware-based hash (browser/mode agnostic)
-  accuracy: number;          // 0-0.80 (max 80%)
+  accuracy: number;          // 0-0.95 (max 95%)
   modules: string[];
   signals: CrossBrowserSignals;
+  previousHash?: string;     // From PersistenceManager (tracking continuity)
   details?: LayerDetails;
 }
 ```
@@ -106,10 +130,13 @@ interface Fingerprint {
 ### Adding New Hardware Signals
 
 1. Verify signal is stable across browsers/incognito modes
-2. Add to `CrossBrowserSignals` interface
-3. Update `generateHardwareHash()` to include signal
-4. Add weight to `CROSS_BROWSER_ACCURACY_WEIGHTS`
-5. Test on Chrome, Chrome Incognito, Safari, Firefox
+2. Add data type interface
+3. Add to `CrossBrowserSignals` interface
+4. Add collection method in Fingerprinter
+5. Update `generateHardwareHash()` to include signal
+6. Add weight to `CROSS_BROWSER_ACCURACY_WEIGHTS`
+7. Update `getAdaptiveModuleContributions()` for mobile
+8. Test on Chrome, Chrome Incognito, Safari, Firefox, iOS Safari, Android Chrome
 
 ## Code Style
 

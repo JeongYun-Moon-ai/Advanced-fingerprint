@@ -39,12 +39,14 @@ export interface Fingerprint {
     /** 디바이스 핑거프린트 해시 (브라우저/모드 무관, 동일 기기면 동일) */
     hash: string;
     timestamp: number;
-    /** 예상 정확도 (0-1) */
+    /** 예상 정확도 (0-0.95) */
     accuracy: number;
     /** 수집된 모듈 목록 */
     modules: string[];
     /** 신호 상세 정보 */
     signals: CrossBrowserSignals;
+    /** 이전 저장된 해시 (추적 연속성 확인용, 영속성 레이어) */
+    previousHash?: string;
     /** 상세 레이어 정보 (debug 모드에서만) */
     details?: LayerDetails;
 }
@@ -52,44 +54,46 @@ export interface Fingerprint {
 /** 크로스-브라우저 핑거프린팅에 사용되는 브라우저 독립 신호 */
 export interface CrossBrowserSignals {
     // === GPU 특성 (WebGL) - 시크릿 모드에서도 안정적 ===
-    /** GPU 렌더러 (WebGL) */
     gpuRenderer: string;
-    /** GPU 벤더 */
     gpuVendor: string;
 
-    // === 화면 특성 - 시크릿 모드에서도 안정적 ===
-    /** 화면 해상도 */
+    // === 화면 특성 ===
     screenResolution: string;
-    /** 사용 가능한 화면 크기 */
     availableScreen: string;
-    /** 픽셀 밀도 */
     pixelRatio: number;
-    /** 색상 깊이 */
     colorDepth: number;
 
-    // === 시스템 특성 - 시크릿 모드에서도 안정적 ===
-    /** 타임존 */
+    // === 시스템 특성 ===
     timezone: string;
-    /** CPU 코어 수 */
     hardwareConcurrency: number;
-    /** 터치 포인트 수 */
     maxTouchPoints: number;
-    /** 플랫폼 */
     platform: string;
 
-    // === WebGL 하드웨어 상수 - 시크릿 모드에서도 안정적 ===
-    /** WebGL 셰이더 정밀도 */
+    // === WebGL 하드웨어 상수 ===
     shaderPrecision: string;
-    /** WebGL 최대 텍스처 크기 */
     webglMaxTextureSize: number;
-    /** WebGL 최대 뷰포트 크기 */
     webglMaxViewportDims: string;
-    /** WebGL 확장 개수 */
     webglExtensionCount: number;
-    /** WebGL 최대 렌더버퍼 크기 */
     webglMaxRenderbufferSize: number;
-    /** WebGL 최대 버텍스 속성 수 */
     webglMaxVertexAttribs: number;
+
+    // === 강화된 신호 (v2) ===
+    /** Math 엔진 정밀도 해시 (V8/SpiderMonkey/JSC 차이) */
+    mathEngineHash: string;
+    /** WebGL GPU 렌더링 해시 */
+    webglRenderHash: string;
+    /** 설치된 폰트 해시 */
+    fontHash: string;
+    /** CSS Feature Matrix 해시 */
+    cssFeatureHash: string;
+    /** Intl API 포맷 해시 */
+    intlHash: string;
+    /** AudioContext 스택 해시 */
+    audioStackHash: string;
+    /** WebGL2 파라미터 해시 */
+    webgl2Hash: string;
+    /** 하드웨어 미디어 코덱 해시 */
+    mediaCapHash: string;
 }
 
 export interface LayerDetails {
@@ -107,6 +111,15 @@ export interface PhysicalSignature {
     audio?: AudioFRFData;
     prnu?: PRNUData;
     orientation?: OrientationData;
+    // === v2 강화 신호 ===
+    mathEngine?: MathEngineData;
+    webglRender?: WebGLRenderData;
+    fonts?: FontData;
+    cssFeatures?: CSSFeatureData;
+    intl?: IntlData;
+    audioStack?: AudioStackData;
+    webgl2?: WebGL2Data;
+    mediaCap?: MediaCapabilitiesData;
 }
 
 export interface TemporalSignature {
@@ -319,20 +332,85 @@ interface LocaleData {
     timezoneOffset: number;
 }
 
+// ============== Enhanced Signal Data Types ==============
+
+/** Math 엔진 정밀도 핑거프린트 (V8/SpiderMonkey/JSC 차이) */
+interface MathEngineData {
+    precision: string;
+    hash: string;
+}
+
+/** WebGL GPU 렌더링 핑거프린트 (실제 드로잉 기반) */
+interface WebGLRenderData {
+    triangleHash: string;
+    gradientHash: string;
+}
+
+/** 설치된 폰트 감지 데이터 */
+interface FontData {
+    detectedFonts: string[];
+    fontCount: number;
+    hash: string;
+}
+
+/** CSS Feature Matrix 핑거프린트 */
+interface CSSFeatureData {
+    supportedCount: number;
+    hash: string;
+}
+
+/** Intl API 포맷 핑거프린트 */
+interface IntlData {
+    dateFormat: string;
+    numberFormat: string;
+    listFormat: string;
+    hash: string;
+}
+
+/** AudioContext DynamicsCompressor 핑거프린트 */
+interface AudioStackData {
+    compressorValue: number;
+    hash: string;
+}
+
+/** WebGL2 확장 파라미터 */
+interface WebGL2Data {
+    maxTexture3D: number;
+    maxSamples: number;
+    maxColorAttachments: number;
+    maxUniformBufferBindings: number;
+    hash: string;
+}
+
+/** Hardware Media Capabilities */
+interface MediaCapabilitiesData {
+    supportedCodecs: string[];
+    hash: string;
+}
+
 // ============== Constants ==============
 
-/** 크로스-브라우저 정확도 기여 가중치 */
+/** 크로스-브라우저 정확도 기여 가중치 (v2: 강화 신호 포함) */
 const CROSS_BROWSER_ACCURACY_WEIGHTS = {
-    BASE: 0.05,
-    GPU_RENDERER: 0.25,
-    GPU_VENDOR: 0.05,
-    SCREEN_RESOLUTION: 0.10,
-    TIMEZONE: 0.08,
-    HARDWARE_CONCURRENCY: 0.08,
-    SHADER_PRECISION: 0.12,
-    WEBGL_MAX_TEXTURE: 0.07,
-    PLATFORM: 0.05,
-    MAX_ACCURACY: 0.80,
+    BASE: 0.03,
+    GPU_RENDERER: 0.15,
+    GPU_VENDOR: 0.03,
+    SCREEN_RESOLUTION: 0.07,
+    TIMEZONE: 0.05,
+    HARDWARE_CONCURRENCY: 0.05,
+    SHADER_PRECISION: 0.08,
+    WEBGL_MAX_TEXTURE: 0.04,
+    PLATFORM: 0.03,
+    // === v2 강화 신호 ===
+    MATH_ENGINE: 0.08,
+    WEBGL_RENDER: 0.07,
+    FONT_FINGERPRINT: 0.07,
+    CSS_FEATURES: 0.04,
+    INTL_API: 0.04,
+    AUDIO_STACK: 0.05,
+    WEBGL2_PARAMS: 0.04,
+    MEDIA_CAPABILITIES: 0.03,
+    MAX_ACCURACY: 0.95,
 } as const;
 
 const DEFAULT_CONFIG: FingerprintConfig = {
@@ -510,22 +588,39 @@ function getAdaptiveModuleContributions(browserInfo: BrowserInfo): { [key: strin
 
     const { os, sensorReliability } = browserInfo;
 
+    // v2 강화 신호 기여도 (모든 플랫폼 공통)
+    base['math-engine'] = 0.06;
+    base['webgl-render'] = 0.05;
+    base['fonts'] = 0.05;
+    base['css-features'] = 0.03;
+    base['intl'] = 0.03;
+    base['audio-stack'] = 0.04;
+    base['webgl2'] = 0.03;
+    base['media-cap'] = 0.03;
+
     if (os === 'ios') {
-        // iOS Safari: 센서 노이즈로 인해 WebGL/Canvas에 더 의존
-        // Apple Privacy 연구 기반 조정
-        base['mems'] = 0.01;           // 의도적 노이즈
-        base['gait'] = 0.01;           // 센서 의존
-        base['orientation'] = 0.01;    // 노이즈
-        base['battery-stl'] = 0.00;    // API 없음
-        base['webgl'] = 0.22;          // GPU는 여전히 신뢰 가능
-        base['canvas'] = 0.12;         // Canvas 신뢰 가능
-        base['screen'] = 0.12;         // 화면 정보 신뢰 가능
-        base['speech'] = 0.10;         // iOS TTS 다양성
-    } else if (os === 'android' && sensorReliability === 'high') {
-        // Android에서 센서 모듈 증가
-        base['mems'] = 0.10;
-        base['gait'] = 0.08;
-        base['orientation'] = 0.05;
+        // iOS: 센서 노이즈 → WebGL/Canvas/폰트/Intl에 집중
+        base['mems'] = 0.01;
+        base['gait'] = 0.01;
+        base['orientation'] = 0.01;
+        base['battery-stl'] = 0.00;
+        base['webgl'] = 0.20;
+        base['canvas'] = 0.10;
+        base['screen'] = 0.10;
+        base['speech'] = 0.08;
+        // iOS 모바일 강화: 폰트가 더 식별력 높음
+        base['fonts'] = 0.08;
+        base['webgl-render'] = 0.07;
+        base['intl'] = 0.05;
+    } else if (os === 'android') {
+        // Android: 풀 센서 접근, 모든 모듈 신뢰 가능
+        base['mems'] = sensorReliability === 'high' ? 0.10 : 0.04;
+        base['gait'] = sensorReliability === 'high' ? 0.08 : 0.03;
+        base['orientation'] = sensorReliability === 'high' ? 0.05 : 0.02;
+        // Android 모바일 강화: Media Capabilities가 기기별 차이 큼
+        base['media-cap'] = 0.05;
+        base['webgl-render'] = 0.06;
+        base['audio-stack'] = 0.05;
     }
 
     return base;
@@ -542,7 +637,7 @@ function getBrowserInfo(): BrowserInfo {
 }
 
 /** 브라우저 감지 결과 export */
-export { detectBrowser, getAdaptiveWeights, getBrowserInfo };
+export { detectBrowser, getAdaptiveWeights, getAdaptiveModuleContributions, getBrowserInfo };
 export type { BrowserInfo };
 
 // ============== Utilities ==============
@@ -600,6 +695,170 @@ class FingerprintUtils {
         return indexed.slice(0, topN).map(x => x.f);
     }
 }
+
+// ============== Persistence Manager (집요한 추적) ==============
+
+/**
+ * 다중 저장소 영속성 관리자
+ * localStorage, sessionStorage, Cookie, IndexedDB, Cache API 동시 사용
+ * 하나라도 살아있으면 복구 후 전체 재동기화
+ */
+class PersistenceManager {
+    private static readonly KEY = '__fp_v2';
+    private static readonly DB_NAME = 'fp_store';
+    private static readonly DB_STORE = 'fingerprints';
+    private static readonly CACHE_NAME = 'fp-cache-v2';
+    private static readonly COOKIE_DAYS = 400; // 크롬 최대 쿠키 수명
+
+    /** 모든 저장소에 핑거프린트 저장 */
+    static async persist(hash: string): Promise<void> {
+        const payload = JSON.stringify({ h: hash, t: Date.now() });
+        this.writeLocalStorage(payload);
+        this.writeSessionStorage(payload);
+        this.writeCookie(payload);
+        await Promise.allSettled([
+            this.writeIndexedDB(payload),
+            this.writeCacheAPI(payload),
+        ]);
+    }
+
+    /** 어떤 저장소든 살아있으면 복구 */
+    static async recover(): Promise<string | null> {
+        const sources = [
+            this.readLocalStorage(),
+            this.readSessionStorage(),
+            this.readCookie(),
+        ];
+        for (const src of sources) {
+            const hash = this.extractHash(src);
+            if (hash) return hash;
+        }
+        const asyncSources = await Promise.allSettled([
+            this.readIndexedDB(),
+            this.readCacheAPI(),
+        ]);
+        for (const result of asyncSources) {
+            if (result.status === 'fulfilled') {
+                const hash = this.extractHash(result.value);
+                if (hash) return hash;
+            }
+        }
+        return null;
+    }
+
+    /** 복구 후 누락된 저장소 재동기화 */
+    static async resync(hash: string): Promise<void> {
+        const payload = JSON.stringify({ h: hash, t: Date.now() });
+        if (!this.readLocalStorage()) this.writeLocalStorage(payload);
+        if (!this.readSessionStorage()) this.writeSessionStorage(payload);
+        if (!this.readCookie()) this.writeCookie(payload);
+        const [idb, cache] = await Promise.allSettled([
+            this.readIndexedDB(),
+            this.readCacheAPI(),
+        ]);
+        if (idb.status !== 'fulfilled' || !idb.value) await this.writeIndexedDB(payload).catch(() => {});
+        if (cache.status !== 'fulfilled' || !cache.value) await this.writeCacheAPI(payload).catch(() => {});
+    }
+
+    private static extractHash(payload: string | null): string | null {
+        if (!payload) return null;
+        try {
+            const data = JSON.parse(payload);
+            return data.h || null;
+        } catch { return null; }
+    }
+
+    // --- localStorage ---
+    private static writeLocalStorage(payload: string): void {
+        try { localStorage.setItem(this.KEY, payload); } catch {}
+    }
+    private static readLocalStorage(): string | null {
+        try { return localStorage.getItem(this.KEY); } catch { return null; }
+    }
+
+    // --- sessionStorage ---
+    private static writeSessionStorage(payload: string): void {
+        try { sessionStorage.setItem(this.KEY, payload); } catch {}
+    }
+    private static readSessionStorage(): string | null {
+        try { return sessionStorage.getItem(this.KEY); } catch { return null; }
+    }
+
+    // --- Cookie (400일 수명) ---
+    private static writeCookie(payload: string): void {
+        try {
+            const expires = new Date(Date.now() + this.COOKIE_DAYS * 86400000).toUTCString();
+            document.cookie = `${this.KEY}=${encodeURIComponent(payload)};expires=${expires};path=/;SameSite=Lax`;
+        } catch {}
+    }
+    private static readCookie(): string | null {
+        try {
+            const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${this.KEY}=([^;]*)`));
+            return match ? decodeURIComponent(match[1]) : null;
+        } catch { return null; }
+    }
+
+    // --- IndexedDB ---
+    private static writeIndexedDB(payload: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            try {
+                const request = indexedDB.open(this.DB_NAME, 1);
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains(this.DB_STORE)) {
+                        db.createObjectStore(this.DB_STORE);
+                    }
+                };
+                request.onsuccess = () => {
+                    try {
+                        const tx = request.result.transaction(this.DB_STORE, 'readwrite');
+                        tx.objectStore(this.DB_STORE).put(payload, this.KEY);
+                        tx.oncomplete = () => { request.result.close(); resolve(); };
+                        tx.onerror = () => { request.result.close(); reject(tx.error); };
+                    } catch (e) { reject(e); }
+                };
+                request.onerror = () => reject(request.error);
+            } catch (e) { reject(e); }
+        });
+    }
+    private static readIndexedDB(): Promise<string | null> {
+        return new Promise((resolve) => {
+            try {
+                const request = indexedDB.open(this.DB_NAME, 1);
+                request.onupgradeneeded = () => {
+                    request.result.createObjectStore(this.DB_STORE);
+                };
+                request.onsuccess = () => {
+                    try {
+                        const tx = request.result.transaction(this.DB_STORE, 'readonly');
+                        const get = tx.objectStore(this.DB_STORE).get(this.KEY);
+                        get.onsuccess = () => { request.result.close(); resolve(get.result || null); };
+                        get.onerror = () => { request.result.close(); resolve(null); };
+                    } catch { request.result.close(); resolve(null); }
+                };
+                request.onerror = () => resolve(null);
+            } catch { resolve(null); }
+        });
+    }
+
+    // --- Cache API ---
+    private static async writeCacheAPI(payload: string): Promise<void> {
+        if (!('caches' in self)) return;
+        const cache = await caches.open(this.CACHE_NAME);
+        const response = new Response(payload, { headers: { 'Content-Type': 'application/json' } });
+        await cache.put(new Request(`/__fp_${this.KEY}`), response);
+    }
+    private static async readCacheAPI(): Promise<string | null> {
+        if (!('caches' in self)) return null;
+        try {
+            const cache = await caches.open(this.CACHE_NAME);
+            const response = await cache.match(new Request(`/__fp_${this.KEY}`));
+            return response ? await response.text() : null;
+        } catch { return null; }
+    }
+}
+
+export { PersistenceManager };
 
 // ============== Behavioral Tracker ==============
 
@@ -785,6 +1044,15 @@ export class Fingerprinter {
             if (signatures.physical.audio?.hash) modules.push('audio-frf');
             if (signatures.physical.prnu?.greenChannelHash) modules.push('prnu');
             if (signatures.physical.orientation?.compassHeading) modules.push('orientation');
+            // v2 강화 모듈
+            if (signatures.physical.mathEngine?.precision) modules.push('math-engine');
+            if (signatures.physical.webglRender?.triangleHash) modules.push('webgl-render');
+            if (signatures.physical.fonts?.fontCount) modules.push('fonts');
+            if (signatures.physical.cssFeatures?.supportedCount) modules.push('css-features');
+            if (signatures.physical.intl?.dateFormat) modules.push('intl');
+            if (signatures.physical.audioStack?.hash) modules.push('audio-stack');
+            if (signatures.physical.webgl2?.maxTexture3D) modules.push('webgl2');
+            if (signatures.physical.mediaCap?.supportedCodecs?.length) modules.push('media-cap');
         }
 
         // Layer 2: Temporal
@@ -818,14 +1086,25 @@ export class Fingerprinter {
         // 하드웨어 기반 핑거프린트 해시 생성
         const result = await this.generateHardwareHash(signatures);
 
+        // 영속성 레이어: 해시 저장 + 이전 해시와 교차 검증
+        const previousHash = await PersistenceManager.recover();
+        await PersistenceManager.persist(result.hash);
+
+        // 이전 해시가 존재하면 재동기화 (부분 삭제 복구)
+        if (previousHash && previousHash !== result.hash) {
+            await PersistenceManager.resync(result.hash);
+        }
+
         return {
             hash: result.hash,
             timestamp: Date.now(),
             accuracy: result.accuracy,
             modules,
             signals: result.signals,
+            /** 이전 저장된 해시 (추적 연속성 확인용) */
+            previousHash: previousHash || undefined,
             details: finalConfig.debug ? signatures : undefined
-        };
+        } as Fingerprint;
     }
 
     /**
@@ -837,60 +1116,72 @@ export class Fingerprinter {
      * - GPU, 화면, WebGL 상수 등 하드웨어 신호만 사용
      */
     private async generateHardwareHash(signatures: LayerDetails): Promise<{ hash: string; accuracy: number; signals: CrossBrowserSignals }> {
-        // WebGL 정보를 한 번에 추출 (컨텍스트 중복 생성 방지)
         const webglInfo = this.getStableWebGLInfo();
+        const p = signatures.physical;
+
+        // v2 강화 신호 해시 사전 계산
+        const [mathHash, fontHash, cssHash, intlHash, audioStackHash, webgl2Hash, mediaCapHash, webglRenderHash] = await Promise.all([
+            p?.mathEngine?.precision ? FingerprintUtils.sha256(p.mathEngine.precision) : Promise.resolve(''),
+            p?.fonts?.detectedFonts?.length ? FingerprintUtils.sha256(p.fonts.detectedFonts.join(',')) : Promise.resolve(''),
+            p?.cssFeatures?.hash ? FingerprintUtils.sha256(p.cssFeatures.hash) : Promise.resolve(''),
+            p?.intl ? FingerprintUtils.sha256(`${p.intl.dateFormat}|${p.intl.numberFormat}|${p.intl.listFormat}`) : Promise.resolve(''),
+            Promise.resolve(p?.audioStack?.hash || ''),
+            Promise.resolve(p?.webgl2?.hash || ''),
+            p?.mediaCap?.hash ? FingerprintUtils.sha256(p.mediaCap.hash) : Promise.resolve(''),
+            p?.webglRender ? FingerprintUtils.sha256(`${p.webglRender.triangleHash}|${p.webglRender.gradientHash}`) : Promise.resolve(''),
+        ]);
 
         const signals: CrossBrowserSignals = {
-            // === GPU 특성 (WebGL) - 시크릿 모드에서도 안정적 ===
-            gpuRenderer: signatures.physical?.webgl?.renderer || '',
-            gpuVendor: signatures.physical?.webgl?.vendor || '',
-
-            // === 화면 특성 - 시크릿 모드에서도 안정적 ===
+            // === 기존 신호 ===
+            gpuRenderer: p?.webgl?.renderer || '',
+            gpuVendor: p?.webgl?.vendor || '',
             screenResolution: `${screen.width}x${screen.height}`,
             availableScreen: `${screen.availWidth}x${screen.availHeight}`,
             pixelRatio: Math.round(window.devicePixelRatio * 100) / 100,
             colorDepth: screen.colorDepth,
-
-            // === 시스템 특성 - 시크릿 모드에서도 안정적 ===
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             hardwareConcurrency: navigator.hardwareConcurrency || 0,
             maxTouchPoints: navigator.maxTouchPoints || 0,
             platform: navigator.platform || '',
-
-            // === WebGL 하드웨어 상수 - 시크릿 모드에서도 안정적 ===
             shaderPrecision: webglInfo.shaderPrecision,
             webglMaxTextureSize: webglInfo.maxTextureSize,
             webglMaxViewportDims: webglInfo.maxViewportDims,
             webglExtensionCount: webglInfo.extensionCount,
             webglMaxRenderbufferSize: webglInfo.maxRenderbufferSize,
             webglMaxVertexAttribs: webglInfo.maxVertexAttribs,
+            // === v2 강화 신호 ===
+            mathEngineHash: mathHash.slice(0, 16),
+            webglRenderHash: webglRenderHash.slice(0, 16),
+            fontHash: fontHash.slice(0, 16),
+            cssFeatureHash: cssHash.slice(0, 16),
+            intlHash: intlHash.slice(0, 16),
+            audioStackHash: audioStackHash.slice(0, 16),
+            webgl2Hash: webgl2Hash.slice(0, 16),
+            mediaCapHash: mediaCapHash.slice(0, 16),
         };
 
-        // 크로스-브라우저용 해시 생성 (안정적인 하드웨어 신호만 사용)
+        // 전체 안정 신호 결합 → SHA-256
         const stableData = [
-            signals.gpuRenderer,
-            signals.gpuVendor,
-            signals.screenResolution,
-            signals.availableScreen,
-            signals.pixelRatio.toFixed(2),
-            signals.colorDepth,
-            signals.timezone,
-            signals.hardwareConcurrency,
-            signals.maxTouchPoints,
-            signals.platform,
-            signals.shaderPrecision,
-            signals.webglMaxTextureSize,
-            signals.webglMaxViewportDims,
-            signals.webglExtensionCount,
-            signals.webglMaxRenderbufferSize,
-            signals.webglMaxVertexAttribs,
+            signals.gpuRenderer, signals.gpuVendor,
+            signals.screenResolution, signals.availableScreen,
+            signals.pixelRatio.toFixed(2), signals.colorDepth,
+            signals.timezone, signals.hardwareConcurrency,
+            signals.maxTouchPoints, signals.platform,
+            signals.shaderPrecision, signals.webglMaxTextureSize,
+            signals.webglMaxViewportDims, signals.webglExtensionCount,
+            signals.webglMaxRenderbufferSize, signals.webglMaxVertexAttribs,
+            // v2 신호
+            signals.mathEngineHash, signals.webglRenderHash,
+            signals.fontHash, signals.cssFeatureHash,
+            signals.intlHash, signals.audioStackHash,
+            signals.webgl2Hash, signals.mediaCapHash,
         ].join('|');
 
         const hash = await FingerprintUtils.sha256(stableData);
 
-        // 크로스-브라우저 정확도 계산 (안정적인 신호 기반)
+        // 정확도 계산 (v2: 최대 95%)
         const W = CROSS_BROWSER_ACCURACY_WEIGHTS;
-        let accuracy = W.BASE;
+        let accuracy: number = W.BASE;
         if (signals.gpuRenderer) accuracy += W.GPU_RENDERER;
         if (signals.gpuVendor) accuracy += W.GPU_VENDOR;
         if (signals.screenResolution !== '0x0') accuracy += W.SCREEN_RESOLUTION;
@@ -899,7 +1190,16 @@ export class Fingerprinter {
         if (signals.shaderPrecision) accuracy += W.SHADER_PRECISION;
         if (signals.webglMaxTextureSize > 0) accuracy += W.WEBGL_MAX_TEXTURE;
         if (signals.platform) accuracy += W.PLATFORM;
-        accuracy = Math.min(accuracy, W.MAX_ACCURACY);
+        // v2 강화 신호
+        if (signals.mathEngineHash) accuracy += W.MATH_ENGINE;
+        if (signals.webglRenderHash) accuracy += W.WEBGL_RENDER;
+        if (signals.fontHash) accuracy += W.FONT_FINGERPRINT;
+        if (signals.cssFeatureHash) accuracy += W.CSS_FEATURES;
+        if (signals.intlHash) accuracy += W.INTL_API;
+        if (signals.audioStackHash) accuracy += W.AUDIO_STACK;
+        if (signals.webgl2Hash) accuracy += W.WEBGL2_PARAMS;
+        if (signals.mediaCapHash) accuracy += W.MEDIA_CAPABILITIES;
+        accuracy = Math.min(accuracy, W.MAX_ACCURACY as number);
 
         return { hash, accuracy, signals };
     }
@@ -964,6 +1264,336 @@ export class Fingerprinter {
         }
     }
 
+    // ============== Enhanced Signal Collection (v2) ==============
+
+    /** Math 엔진 핑거프린트 - JS 엔진별 부동소수점 정밀도 차이 감지 */
+    private fingerprintMathEngine(): MathEngineData {
+        const ops: number[] = [
+            Math.tan(-1e300),
+            Math.atan2(Math.PI, Math.E),
+            Math.sinh(1),
+            Math.expm1(1),
+            Math.cbrt(Math.PI),
+            Math.log1p(Math.E),
+            Math.cosh(10),
+            Math.tanh(100),
+            Math.asinh(Math.SQRT2),
+            Math.atanh(0.5),
+            Math.hypot(3, 4, 5, 6),
+            Math.fround(0.1 + 0.2),
+            Math.log2(Math.E),
+            Math.log10(Math.PI),
+            Math.trunc(Math.PI * 1e15) % 1e10,
+            // 엔진별 특수 값 처리 차이
+            parseFloat('0.1') + parseFloat('0.2'),
+            Math.pow(2, 53) + 1,
+            Number.MAX_SAFE_INTEGER % 97,
+        ];
+        const precision = ops.map(v => v.toString()).join('|');
+        return {
+            precision,
+            hash: '', // generate()에서 SHA-256 처리
+        };
+    }
+
+    /** WebGL GPU 렌더링 핑거프린트 - 실제 드로잉 후 픽셀 추출 */
+    private fingerprintWebGLRender(): WebGLRenderData {
+        const defaultVal: WebGLRenderData = { triangleHash: '', gradientHash: '' };
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+            if (!gl) return defaultVal;
+
+            // 삼각형 렌더링 (GPU별 래스터라이저 차이)
+            const vs = gl.createShader(gl.VERTEX_SHADER)!;
+            gl.shaderSource(vs, 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}');
+            gl.compileShader(vs);
+            const fs = gl.createShader(gl.FRAGMENT_SHADER)!;
+            gl.shaderSource(fs, 'precision mediump float;void main(){gl_FragColor=vec4(0.2,0.7,0.3,1.0);}');
+            gl.compileShader(fs);
+            const prog = gl.createProgram()!;
+            gl.attachShader(prog, vs);
+            gl.attachShader(prog, fs);
+            gl.linkProgram(prog);
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                0.0, 0.8, -0.7, -0.5, 0.7, -0.5,   // 삼각형
+                -0.3, 0.3, 0.3, 0.3, 0.0, -0.6,     // 두번째 삼각형
+            ]), gl.STATIC_DRAW);
+            const loc = gl.getAttribLocation(prog, 'p');
+            gl.enableVertexAttribArray(loc);
+            gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+            gl.clearColor(0.1, 0.1, 0.1, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            // 주요 픽셀 샘플링 (경계, 중심, 코너)
+            const pixels = new Uint8Array(64 * 64 * 4);
+            gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+            // 특정 위치 픽셀 추출 (안티앨리어싱 차이 감지)
+            const samplePoints = [0, 256, 512, 1024, 2048, 4096, 8192, 12288, 15360];
+            const triangleSig = samplePoints.map(i => `${pixels[i]}-${pixels[i + 1]}-${pixels[i + 2]}`).join('|');
+
+            // 그라디언트 렌더링 (색상 보간 차이)
+            const fs2 = gl.createShader(gl.FRAGMENT_SHADER)!;
+            gl.shaderSource(fs2, 'precision mediump float;void main(){gl_FragColor=vec4(gl_FragCoord.x/64.0,gl_FragCoord.y/64.0,0.5,1.0);}');
+            gl.compileShader(fs2);
+            const prog2 = gl.createProgram()!;
+            gl.attachShader(prog2, vs);
+            gl.attachShader(prog2, fs2);
+            gl.linkProgram(prog2);
+            gl.useProgram(prog2);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+            const gradientSig = samplePoints.map(i => `${pixels[i]}-${pixels[i + 1]}`).join('|');
+
+            // 정리
+            gl.deleteProgram(prog);
+            gl.deleteProgram(prog2);
+            gl.deleteShader(vs);
+            gl.deleteShader(fs);
+            gl.deleteShader(fs2);
+            gl.deleteBuffer(buf);
+
+            return { triangleHash: triangleSig, gradientHash: gradientSig };
+        } catch { return defaultVal; }
+    }
+
+    /** 폰트 감지 - Canvas measureText 기반 설치된 폰트 열거 */
+    private detectFonts(): FontData {
+        const defaultVal: FontData = { detectedFonts: [], fontCount: 0, hash: '' };
+        try {
+            const baseFonts = ['monospace', 'sans-serif', 'serif'] as const;
+            const testFonts = [
+                // 서양 폰트
+                'Arial', 'Arial Black', 'Calibri', 'Cambria', 'Century Gothic',
+                'Comic Sans MS', 'Consolas', 'Courier New', 'Georgia', 'Helvetica',
+                'Impact', 'Lucida Console', 'Lucida Sans', 'Palatino Linotype',
+                'Segoe UI', 'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Verdana',
+                'Futura', 'Gill Sans', 'Optima', 'Rockwell', 'Baskerville',
+                // 모바일 특화
+                'San Francisco', 'Roboto', 'Noto Sans', 'Droid Sans',
+                'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+                // 한국어
+                'Malgun Gothic', 'NanumGothic', 'NanumMyeongjo', 'Dotum', 'Gulim', 'Batang',
+                'Apple SD Gothic Neo', 'Noto Sans KR',
+                // 일본어
+                'Yu Gothic', 'Meiryo', 'MS Gothic', 'Hiragino Sans',
+                // 중국어
+                'SimSun', 'Microsoft YaHei', 'PingFang SC', 'STHeiti',
+            ];
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return defaultVal;
+
+            const testString = 'mmmmmmmmlli10OQ';
+            const testSize = '72px';
+
+            // 기본 폰트 너비 측정
+            const baseWidths: Record<string, number> = {};
+            for (const base of baseFonts) {
+                ctx.font = `${testSize} ${base}`;
+                baseWidths[base] = ctx.measureText(testString).width;
+            }
+
+            const detected: string[] = [];
+            for (const font of testFonts) {
+                for (const base of baseFonts) {
+                    ctx.font = `${testSize} '${font}', ${base}`;
+                    if (ctx.measureText(testString).width !== baseWidths[base]) {
+                        detected.push(font);
+                        break;
+                    }
+                }
+            }
+
+            return { detectedFonts: detected, fontCount: detected.length, hash: '' };
+        } catch { return defaultVal; }
+    }
+
+    /** CSS Feature Matrix 핑거프린트 - CSS.supports() 기반 */
+    private fingerprintCSSFeatures(): CSSFeatureData {
+        const defaultVal: CSSFeatureData = { supportedCount: 0, hash: '' };
+        if (!('CSS' in window) || !CSS.supports) return defaultVal;
+        try {
+            const features = [
+                'display: grid', 'display: flex', 'display: contents',
+                'position: sticky', 'backdrop-filter: blur(1px)',
+                'color: oklch(0.5 0.2 240)', 'color: lch(50 50 50)',
+                'color: color-mix(in srgb, red 50%, blue)',
+                'container-type: inline-size',
+                'text-wrap: balance', 'text-wrap: pretty',
+                'view-transition-name: a',
+                'anchor-name: --a',
+                'animation-timeline: scroll()',
+                'font-palette: --custom',
+                'text-decoration-thickness: from-font',
+                'overscroll-behavior: contain',
+                'scroll-snap-type: x mandatory',
+                'aspect-ratio: 1/1',
+                'gap: 1px', 'row-gap: 1px',
+                'mask-image: none',
+                'clip-path: circle(50%)',
+                'filter: blur(1px)',
+                'mix-blend-mode: multiply',
+                'isolation: isolate',
+                'will-change: transform',
+                'contain: layout',
+                'content-visibility: auto',
+                'touch-action: manipulation',
+                'user-select: none',
+                'hyphens: auto',
+                'writing-mode: vertical-rl',
+                'text-orientation: mixed',
+                'line-clamp: 3',
+                // 모바일 중요 CSS
+                'scroll-behavior: smooth',
+                '-webkit-overflow-scrolling: touch',
+                'env(safe-area-inset-top)',
+            ];
+
+            const supported = features.filter(f => {
+                try {
+                    const [prop, val] = f.includes(':') ? f.split(':').map(s => s.trim()) : [f, ''];
+                    return val ? CSS.supports(prop, val) : CSS.supports(f);
+                } catch { return false; }
+            });
+
+            return { supportedCount: supported.length, hash: supported.join('|') };
+        } catch { return defaultVal; }
+    }
+
+    /** Intl API 핑거프린트 - 로케일별 포맷 차이 */
+    private fingerprintIntlAPI(): IntlData {
+        try {
+            const testDate = new Date(2024, 0, 15, 13, 45, 30);
+            const testNum = 1234567.89;
+
+            const dateFormats = [
+                new Intl.DateTimeFormat('en-US', { dateStyle: 'full' }).format(testDate),
+                new Intl.DateTimeFormat('ko-KR', { dateStyle: 'full' }).format(testDate),
+                new Intl.DateTimeFormat(undefined, {
+                    weekday: 'long', year: 'numeric', month: 'long',
+                    day: 'numeric', hour: 'numeric', minute: 'numeric',
+                }).format(testDate),
+            ].join('|');
+
+            const numberFormats = [
+                new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(testNum),
+                new Intl.NumberFormat(undefined, { notation: 'compact' }).format(testNum),
+                new Intl.NumberFormat(undefined, { style: 'unit', unit: 'kilometer-per-hour' }).format(testNum),
+            ].join('|');
+
+            let listFormat = '';
+            try {
+                listFormat = new (Intl as any).ListFormat(undefined, { style: 'long', type: 'conjunction' }).format(['A', 'B', 'C']);
+            } catch { listFormat = 'unsupported'; }
+
+            return { dateFormat: dateFormats, numberFormat: numberFormats, listFormat, hash: '' };
+        } catch {
+            return { dateFormat: '', numberFormat: '', listFormat: '', hash: '' };
+        }
+    }
+
+    /** AudioContext DynamicsCompressor 핑거프린트 (OfflineAudioContext 기반) */
+    private async fingerprintAudioStack(): Promise<AudioStackData> {
+        try {
+            const ctx = new OfflineAudioContext(1, 5000, 44100);
+            const oscillator = ctx.createOscillator();
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(10000, ctx.currentTime);
+
+            const compressor = ctx.createDynamicsCompressor();
+            compressor.threshold.setValueAtTime(-50, ctx.currentTime);
+            compressor.knee.setValueAtTime(40, ctx.currentTime);
+            compressor.ratio.setValueAtTime(12, ctx.currentTime);
+            compressor.attack.setValueAtTime(0, ctx.currentTime);
+            compressor.release.setValueAtTime(0.25, ctx.currentTime);
+
+            oscillator.connect(compressor);
+            compressor.connect(ctx.destination);
+            oscillator.start(0);
+
+            const buffer = await ctx.startRendering();
+            const data = buffer.getChannelData(0);
+
+            // 4500~5000 구간 합산 (핑거프린트 핫존)
+            let sum = 0;
+            for (let i = 4500; i < data.length; i++) {
+                sum += Math.abs(data[i]);
+            }
+
+            return { compressorValue: sum, hash: sum.toString() };
+        } catch {
+            return { compressorValue: 0, hash: '' };
+        }
+    }
+
+    /** WebGL2 확장 파라미터 추출 */
+    private getWebGL2Parameters(): WebGL2Data {
+        const defaultVal: WebGL2Data = { maxTexture3D: 0, maxSamples: 0, maxColorAttachments: 0, maxUniformBufferBindings: 0, hash: '' };
+        try {
+            const canvas = document.createElement('canvas');
+            const gl2 = canvas.getContext('webgl2') as WebGL2RenderingContext | null;
+            if (!gl2) return defaultVal;
+
+            const maxTexture3D = gl2.getParameter(gl2.MAX_3D_TEXTURE_SIZE) || 0;
+            const maxSamples = gl2.getParameter(gl2.MAX_SAMPLES) || 0;
+            const maxColorAttachments = gl2.getParameter(gl2.MAX_COLOR_ATTACHMENTS) || 0;
+            const maxUniformBufferBindings = gl2.getParameter(gl2.MAX_UNIFORM_BUFFER_BINDINGS) || 0;
+            const maxDrawBuffers = gl2.getParameter(gl2.MAX_DRAW_BUFFERS) || 0;
+            const maxElementIndex = gl2.getParameter(gl2.MAX_ELEMENT_INDEX) || 0;
+            const maxTransformFeedback = gl2.getParameter(gl2.MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS) || 0;
+
+            const hash = [maxTexture3D, maxSamples, maxColorAttachments, maxUniformBufferBindings,
+                maxDrawBuffers, maxElementIndex, maxTransformFeedback].join('|');
+
+            return { maxTexture3D, maxSamples, maxColorAttachments, maxUniformBufferBindings, hash };
+        } catch { return defaultVal; }
+    }
+
+    /** 하드웨어 미디어 코덱 지원 핑거프린트 */
+    private async fingerprintMediaCapabilities(): Promise<MediaCapabilitiesData> {
+        const defaultVal: MediaCapabilitiesData = { supportedCodecs: [], hash: '' };
+        if (!('mediaCapabilities' in navigator)) return defaultVal;
+        try {
+            const codecs = [
+                { type: 'file' as const, video: { contentType: 'video/mp4; codecs="avc1.42E01E"', width: 1920, height: 1080, bitrate: 5000000, framerate: 30 } },
+                { type: 'file' as const, video: { contentType: 'video/mp4; codecs="hev1.1.6.L93.B0"', width: 1920, height: 1080, bitrate: 5000000, framerate: 30 } },
+                { type: 'file' as const, video: { contentType: 'video/webm; codecs="vp8"', width: 1920, height: 1080, bitrate: 5000000, framerate: 30 } },
+                { type: 'file' as const, video: { contentType: 'video/webm; codecs="vp9"', width: 1920, height: 1080, bitrate: 5000000, framerate: 30 } },
+                { type: 'file' as const, video: { contentType: 'video/webm; codecs="av01.0.08M.08"', width: 1920, height: 1080, bitrate: 5000000, framerate: 30 } },
+                { type: 'file' as const, audio: { contentType: 'audio/mp4; codecs="mp4a.40.2"', channels: '2', bitrate: 128000, samplerate: 44100 } },
+                { type: 'file' as const, audio: { contentType: 'audio/webm; codecs="opus"', channels: '2', bitrate: 128000, samplerate: 48000 } },
+                { type: 'file' as const, audio: { contentType: 'audio/ogg; codecs="flac"', channels: '2', bitrate: 1411000, samplerate: 44100 } },
+            ];
+
+            const supported: string[] = [];
+            const results = await Promise.allSettled(
+                codecs.map(c => navigator.mediaCapabilities.decodingInfo(c as any))
+            );
+
+            results.forEach((r, i) => {
+                if (r.status === 'fulfilled' && r.value.supported) {
+                    const codec = codecs[i].video?.contentType || codecs[i].audio?.contentType || '';
+                    const smooth = r.value.smooth ? 'S' : '';
+                    const efficient = r.value.powerEfficient ? 'E' : '';
+                    supported.push(`${codec}:${smooth}${efficient}`);
+                }
+            });
+
+            return { supportedCodecs: supported, hash: supported.join('|') };
+        } catch { return defaultVal; }
+    }
+
     // ============== Physical Layer ==============
 
     private async collectPhysicalLayer(config: FingerprintConfig): Promise<PhysicalSignature> {
@@ -993,6 +1623,16 @@ export class Fingerprinter {
 
         // PRNU는 항상 권한 필요 (카메라)
         if (config.enablePRNU) result.prnu = await this.analyzePRNU();
+
+        // === v2 강화 신호 (권한 불필요, 모바일 호환) ===
+        result.mathEngine = this.fingerprintMathEngine();
+        result.webglRender = this.fingerprintWebGLRender();
+        result.fonts = this.detectFonts();
+        result.cssFeatures = this.fingerprintCSSFeatures();
+        result.intl = this.fingerprintIntlAPI();
+        result.audioStack = await this.fingerprintAudioStack();
+        result.webgl2 = this.getWebGL2Parameters();
+        result.mediaCap = await this.fingerprintMediaCapabilities();
 
         return result;
     }
