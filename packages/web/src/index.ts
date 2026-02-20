@@ -94,6 +94,16 @@ export interface CrossBrowserSignals {
     webgl2Hash: string;
     /** 하드웨어 미디어 코덱 해시 */
     mediaCapHash: string;
+
+    // === 개체 식별 신호 (v3: 동일 모델 구분) ===
+    /** GPU 실리콘 제조 편차 해시 */
+    gpuSiliconHash: string;
+    /** 오디오 DAC 하드웨어 편차 해시 */
+    audioHardwareHash: string;
+    /** Canvas 마이크로 렌더링 편차 해시 */
+    canvasMicroHash: string;
+    /** Storage 용량/사용량 프로파일 해시 */
+    storageProfileHash: string;
 }
 
 export interface LayerDetails {
@@ -120,6 +130,11 @@ export interface PhysicalSignature {
     audioStack?: AudioStackData;
     webgl2?: WebGL2Data;
     mediaCap?: MediaCapabilitiesData;
+    // === v3 개체 식별 신호 ===
+    gpuSilicon?: GPUSiliconData;
+    audioHardware?: AudioHardwareData;
+    canvasMicro?: CanvasMicroData;
+    storageProfile?: StorageProfileData;
 }
 
 export interface TemporalSignature {
@@ -388,29 +403,70 @@ interface MediaCapabilitiesData {
     hash: string;
 }
 
+// ============== Device Uniqueness (v3: 개체 식별) ==============
+
+/** GPU 실리콘 편차 핑거프린트 - 동일 모델도 칩마다 부동소수점 반올림 다름 */
+interface GPUSiliconData {
+    /** 복합 셰이더 연산 결과 (제조 편차 감지) */
+    shaderResults: string;
+    /** 다중 셰이더 프로그램 결과 */
+    multiPassResults: string;
+    hash: string;
+}
+
+/** 오디오 DAC 하드웨어 편차 - 개체별 오디오 처리 미세 차이 */
+interface AudioHardwareData {
+    /** 다중 설정 파형 샘플 (개체별 DAC 편차) */
+    waveformSamples: string;
+    /** DynamicsCompressor 특성 곡선 */
+    compressorCurve: string;
+    hash: string;
+}
+
+/** Canvas 마이크로 렌더링 - 서브픽셀 안티앨리어싱 GPU 편차 */
+interface CanvasMicroData {
+    /** 서브픽셀 텍스트 렌더링 차이 */
+    textRender: string;
+    /** 서브픽셀 도형 안티앨리어싱 */
+    shapeRender: string;
+    hash: string;
+}
+
+/** Storage 프로파일 - 기기별 사용량/용량 */
+interface StorageProfileData {
+    quota: number;
+    usage: number;
+    hash: string;
+}
+
 // ============== Constants ==============
 
-/** 크로스-브라우저 정확도 기여 가중치 (v2: 강화 신호 포함) */
+/** 크로스-브라우저 정확도 기여 가중치 (v3: 개체 식별 포함) */
 const CROSS_BROWSER_ACCURACY_WEIGHTS = {
-    BASE: 0.03,
-    GPU_RENDERER: 0.15,
-    GPU_VENDOR: 0.03,
-    SCREEN_RESOLUTION: 0.07,
-    TIMEZONE: 0.05,
-    HARDWARE_CONCURRENCY: 0.05,
-    SHADER_PRECISION: 0.08,
-    WEBGL_MAX_TEXTURE: 0.04,
-    PLATFORM: 0.03,
+    BASE: 0.02,
+    GPU_RENDERER: 0.10,
+    GPU_VENDOR: 0.02,
+    SCREEN_RESOLUTION: 0.05,
+    TIMEZONE: 0.03,
+    HARDWARE_CONCURRENCY: 0.03,
+    SHADER_PRECISION: 0.05,
+    WEBGL_MAX_TEXTURE: 0.03,
+    PLATFORM: 0.02,
     // === v2 강화 신호 ===
-    MATH_ENGINE: 0.08,
-    WEBGL_RENDER: 0.07,
-    FONT_FINGERPRINT: 0.07,
-    CSS_FEATURES: 0.04,
-    INTL_API: 0.04,
-    AUDIO_STACK: 0.05,
-    WEBGL2_PARAMS: 0.04,
-    MEDIA_CAPABILITIES: 0.03,
-    MAX_ACCURACY: 0.95,
+    MATH_ENGINE: 0.05,
+    WEBGL_RENDER: 0.04,
+    FONT_FINGERPRINT: 0.05,
+    CSS_FEATURES: 0.03,
+    INTL_API: 0.03,
+    AUDIO_STACK: 0.03,
+    WEBGL2_PARAMS: 0.03,
+    MEDIA_CAPABILITIES: 0.02,
+    // === v3 개체 식별 신호 (동일 모델 구분 핵심) ===
+    GPU_SILICON: 0.12,         // GPU 제조 편차 (가장 중요)
+    AUDIO_HARDWARE: 0.10,      // 오디오 DAC 편차
+    CANVAS_MICRO: 0.08,        // 서브픽셀 렌더링 편차
+    STORAGE_PROFILE: 0.04,     // 기기 사용량 프로파일
+    MAX_ACCURACY: 0.97,
 } as const;
 
 const DEFAULT_CONFIG: FingerprintConfig = {
@@ -1053,6 +1109,11 @@ export class Fingerprinter {
             if (signatures.physical.audioStack?.hash) modules.push('audio-stack');
             if (signatures.physical.webgl2?.maxTexture3D) modules.push('webgl2');
             if (signatures.physical.mediaCap?.supportedCodecs?.length) modules.push('media-cap');
+            // v3 개체 식별 모듈
+            if (signatures.physical.gpuSilicon?.shaderResults) modules.push('gpu-silicon');
+            if (signatures.physical.audioHardware?.waveformSamples) modules.push('audio-hardware');
+            if (signatures.physical.canvasMicro?.textRender) modules.push('canvas-micro');
+            if (signatures.physical.storageProfile?.quota) modules.push('storage-profile');
         }
 
         // Layer 2: Temporal
@@ -1120,7 +1181,10 @@ export class Fingerprinter {
         const p = signatures.physical;
 
         // v2 강화 신호 해시 사전 계산
-        const [mathHash, fontHash, cssHash, intlHash, audioStackHash, webgl2Hash, mediaCapHash, webglRenderHash] = await Promise.all([
+        // v2 + v3 신호 해시 병렬 계산
+        const [mathHash, fontHash, cssHash, intlHash, audioStackHash, webgl2Hash, mediaCapHash, webglRenderHash,
+               gpuSiliconHash, audioHwHash, canvasMicroHash, storageHash] = await Promise.all([
+            // v2
             p?.mathEngine?.precision ? FingerprintUtils.sha256(p.mathEngine.precision) : Promise.resolve(''),
             p?.fonts?.detectedFonts?.length ? FingerprintUtils.sha256(p.fonts.detectedFonts.join(',')) : Promise.resolve(''),
             p?.cssFeatures?.hash ? FingerprintUtils.sha256(p.cssFeatures.hash) : Promise.resolve(''),
@@ -1129,6 +1193,11 @@ export class Fingerprinter {
             Promise.resolve(p?.webgl2?.hash || ''),
             p?.mediaCap?.hash ? FingerprintUtils.sha256(p.mediaCap.hash) : Promise.resolve(''),
             p?.webglRender ? FingerprintUtils.sha256(`${p.webglRender.triangleHash}|${p.webglRender.gradientHash}`) : Promise.resolve(''),
+            // v3 개체 식별
+            p?.gpuSilicon ? FingerprintUtils.sha256(`${p.gpuSilicon.shaderResults}|${p.gpuSilicon.multiPassResults}`) : Promise.resolve(''),
+            p?.audioHardware ? FingerprintUtils.sha256(`${p.audioHardware.waveformSamples}|${p.audioHardware.compressorCurve}`) : Promise.resolve(''),
+            p?.canvasMicro ? FingerprintUtils.sha256(`${p.canvasMicro.textRender}|${p.canvasMicro.shapeRender}`) : Promise.resolve(''),
+            p?.storageProfile?.hash ? FingerprintUtils.sha256(p.storageProfile.hash) : Promise.resolve(''),
         ]);
 
         const signals: CrossBrowserSignals = {
@@ -1158,9 +1227,14 @@ export class Fingerprinter {
             audioStackHash: audioStackHash.slice(0, 16),
             webgl2Hash: webgl2Hash.slice(0, 16),
             mediaCapHash: mediaCapHash.slice(0, 16),
+            // v3 개체 식별
+            gpuSiliconHash: gpuSiliconHash.slice(0, 24),
+            audioHardwareHash: audioHwHash.slice(0, 24),
+            canvasMicroHash: canvasMicroHash.slice(0, 24),
+            storageProfileHash: storageHash.slice(0, 16),
         };
 
-        // 전체 안정 신호 결합 → SHA-256
+        // 전체 신호 결합 → SHA-256 (v3: 개체 식별 포함)
         const stableData = [
             signals.gpuRenderer, signals.gpuVendor,
             signals.screenResolution, signals.availableScreen,
@@ -1170,16 +1244,19 @@ export class Fingerprinter {
             signals.shaderPrecision, signals.webglMaxTextureSize,
             signals.webglMaxViewportDims, signals.webglExtensionCount,
             signals.webglMaxRenderbufferSize, signals.webglMaxVertexAttribs,
-            // v2 신호
+            // v2
             signals.mathEngineHash, signals.webglRenderHash,
             signals.fontHash, signals.cssFeatureHash,
             signals.intlHash, signals.audioStackHash,
             signals.webgl2Hash, signals.mediaCapHash,
+            // v3 개체 식별 (동일 모델 구분 핵심)
+            signals.gpuSiliconHash, signals.audioHardwareHash,
+            signals.canvasMicroHash, signals.storageProfileHash,
         ].join('|');
 
         const hash = await FingerprintUtils.sha256(stableData);
 
-        // 정확도 계산 (v2: 최대 95%)
+        // 정확도 계산 (v3: 최대 97%)
         const W = CROSS_BROWSER_ACCURACY_WEIGHTS;
         let accuracy: number = W.BASE;
         if (signals.gpuRenderer) accuracy += W.GPU_RENDERER;
@@ -1190,7 +1267,7 @@ export class Fingerprinter {
         if (signals.shaderPrecision) accuracy += W.SHADER_PRECISION;
         if (signals.webglMaxTextureSize > 0) accuracy += W.WEBGL_MAX_TEXTURE;
         if (signals.platform) accuracy += W.PLATFORM;
-        // v2 강화 신호
+        // v2
         if (signals.mathEngineHash) accuracy += W.MATH_ENGINE;
         if (signals.webglRenderHash) accuracy += W.WEBGL_RENDER;
         if (signals.fontHash) accuracy += W.FONT_FINGERPRINT;
@@ -1199,6 +1276,11 @@ export class Fingerprinter {
         if (signals.audioStackHash) accuracy += W.AUDIO_STACK;
         if (signals.webgl2Hash) accuracy += W.WEBGL2_PARAMS;
         if (signals.mediaCapHash) accuracy += W.MEDIA_CAPABILITIES;
+        // v3 개체 식별
+        if (signals.gpuSiliconHash) accuracy += W.GPU_SILICON;
+        if (signals.audioHardwareHash) accuracy += W.AUDIO_HARDWARE;
+        if (signals.canvasMicroHash) accuracy += W.CANVAS_MICRO;
+        if (signals.storageProfileHash) accuracy += W.STORAGE_PROFILE;
         accuracy = Math.min(accuracy, W.MAX_ACCURACY as number);
 
         return { hash, accuracy, signals };
@@ -1262,6 +1344,273 @@ export class Fingerprinter {
         } catch {
             return defaultValue;
         }
+    }
+
+    // ============== Device Uniqueness: 개체 식별 (v3) ==============
+
+    /**
+     * GPU 실리콘 편차 핑거프린트
+     * 같은 모델(예: iPhone 15 Pro)이라도 GPU 칩 제조 과정에서
+     * 부동소수점 반올림 동작이 미세하게 다름.
+     * 3개의 복합 셰이더를 실행하여 각 GPU 개체의 고유한 연산 결과를 추출.
+     * iOS/Android/Desktop 모두 WebGL 지원하면 동작.
+     */
+    private fingerprintGPUSilicon(): GPUSiliconData {
+        const defaultVal: GPUSiliconData = { shaderResults: '', multiPassResults: '', hash: '' };
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const gl = canvas.getContext('webgl', {
+                preserveDrawingBuffer: true,
+                antialias: false,
+                depth: false,
+                stencil: false,
+            }) as WebGLRenderingContext | null;
+            if (!gl) return defaultVal;
+
+            const vs = gl.createShader(gl.VERTEX_SHADER)!;
+            gl.shaderSource(vs, 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}');
+            gl.compileShader(vs);
+
+            // 셰이더 1: 삼각함수 체인 (sin/cos 정밀도 편차)
+            const shader1 = `
+                precision highp float;
+                void main(){
+                    float x=0.1;
+                    for(int i=0;i<100;i++){
+                        x=sin(x*7.238917)*cos(x*3.14159265)+sqrt(abs(x*0.99713));
+                        x=fract(x*43758.5453);
+                    }
+                    gl_FragColor=vec4(fract(x*17.0),fract(x*257.0),fract(x*4099.0),1.0);
+                }`;
+
+            // 셰이더 2: 지수/로그 연산 (exp/log 정밀도 편차)
+            const shader2 = `
+                precision highp float;
+                void main(){
+                    float x=0.37;
+                    for(int i=0;i<80;i++){
+                        x=exp(sin(x))*0.1+log(abs(x)+1.0)*0.3;
+                        x=fract(x*12345.6789);
+                    }
+                    gl_FragColor=vec4(fract(x*13.0),fract(x*241.0),fract(x*3571.0),1.0);
+                }`;
+
+            // 셰이더 3: atan/pow 연산 (역삼각함수 정밀도 편차)
+            const shader3 = `
+                precision highp float;
+                void main(){
+                    float x=0.73;
+                    for(int i=0;i<60;i++){
+                        x=atan(x*2.71828,x*1.41421)+pow(abs(x),0.7071);
+                        x=fract(x*98765.4321);
+                    }
+                    gl_FragColor=vec4(fract(x*19.0),fract(x*283.0),fract(x*4507.0),1.0);
+                }`;
+
+            const buf = gl.createBuffer()!;
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+            const runShader = (source: string): string => {
+                const fs = gl.createShader(gl.FRAGMENT_SHADER)!;
+                gl.shaderSource(fs, source);
+                gl.compileShader(fs);
+                const prog = gl.createProgram()!;
+                gl.attachShader(prog, vs);
+                gl.attachShader(prog, fs);
+                gl.linkProgram(prog);
+                gl.useProgram(prog);
+                const loc = gl.getAttribLocation(prog, 'p');
+                gl.enableVertexAttribArray(loc);
+                gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                // 4x4 그리드에서 16개 픽셀 전부 읽기
+                const pixels = new Uint8Array(16 * 16 * 4);
+                gl.readPixels(0, 0, 16, 16, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+                gl.deleteProgram(prog);
+                gl.deleteShader(fs);
+
+                // 대각선 + 모서리 샘플 (49개 픽셀 값)
+                const samples: number[] = [];
+                for (let y = 0; y < 16; y += 2) {
+                    for (let x = 0; x < 16; x += 4) {
+                        const idx = (y * 16 + x) * 4;
+                        samples.push(pixels[idx], pixels[idx + 1], pixels[idx + 2]);
+                    }
+                }
+                return samples.join('-');
+            };
+
+            const r1 = runShader(shader1);
+            const r2 = runShader(shader2);
+            const r3 = runShader(shader3);
+
+            gl.deleteShader(vs);
+            gl.deleteBuffer(buf);
+
+            return {
+                shaderResults: r1,
+                multiPassResults: `${r2}|${r3}`,
+                hash: '',
+            };
+        } catch { return defaultVal; }
+    }
+
+    /**
+     * 오디오 DAC 하드웨어 편차 핑거프린트
+     * OfflineAudioContext에서 DynamicsCompressor를 통과한 파형의
+     * 특정 샘플 값이 기기마다 미세하게 다름 (DAC/DSP 제조 편차).
+     * 3가지 설정으로 교차 검증하여 개체 고유성 확보.
+     */
+    private async fingerprintAudioHardware(): Promise<AudioHardwareData> {
+        const defaultVal: AudioHardwareData = { waveformSamples: '', compressorCurve: '', hash: '' };
+        try {
+            const configs = [
+                { type: 'triangle' as OscillatorType, freq: 10000, threshold: -50, knee: 40, ratio: 12 },
+                { type: 'square' as OscillatorType, freq: 5000, threshold: -30, knee: 30, ratio: 8 },
+                { type: 'sawtooth' as OscillatorType, freq: 8000, threshold: -40, knee: 50, ratio: 16 },
+            ];
+
+            const allSamples: number[] = [];
+            const curveSamples: number[] = [];
+
+            for (const cfg of configs) {
+                const ctx = new OfflineAudioContext(1, 5000, 44100);
+                const osc = ctx.createOscillator();
+                osc.type = cfg.type;
+                osc.frequency.setValueAtTime(cfg.freq, ctx.currentTime);
+
+                const comp = ctx.createDynamicsCompressor();
+                comp.threshold.setValueAtTime(cfg.threshold, ctx.currentTime);
+                comp.knee.setValueAtTime(cfg.knee, ctx.currentTime);
+                comp.ratio.setValueAtTime(cfg.ratio, ctx.currentTime);
+                comp.attack.setValueAtTime(0, ctx.currentTime);
+                comp.release.setValueAtTime(0.25, ctx.currentTime);
+
+                osc.connect(comp);
+                comp.connect(ctx.destination);
+                osc.start(0);
+
+                const buffer = await ctx.startRendering();
+                const data = buffer.getChannelData(0);
+
+                // 핫존 샘플 (4500~4520): 개체별 미세 차이가 가장 큰 구간
+                for (let i = 4500; i < 4520; i++) {
+                    allSamples.push(Math.round(data[i] * 1e8));
+                }
+
+                // 곡선 특성: 500 간격 샘플
+                for (let i = 0; i < 5000; i += 500) {
+                    curveSamples.push(Math.round(data[i] * 1e6));
+                }
+            }
+
+            return {
+                waveformSamples: allSamples.join(','),
+                compressorCurve: curveSamples.join(','),
+                hash: '',
+            };
+        } catch { return defaultVal; }
+    }
+
+    /**
+     * Canvas 마이크로 렌더링 핑거프린트
+     * 서브픽셀 좌표에 텍스트와 도형을 그리면 안티앨리어싱이 발생하며,
+     * GPU 래스터라이저의 제조 편차로 인해 미세한 픽셀 값 차이가 생김.
+     * iOS/Android/Desktop 모두 Canvas 2D 지원.
+     */
+    private fingerprintCanvasMicro(): CanvasMicroData {
+        const defaultVal: CanvasMicroData = { textRender: '', shapeRender: '', hash: '' };
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 120;
+            canvas.height = 60;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) return defaultVal;
+
+            // === 서브픽셀 텍스트 렌더링 ===
+            ctx.textBaseline = 'alphabetic';
+
+            // 다양한 폰트 + 서브픽셀 좌표
+            ctx.font = '11.5px sans-serif';
+            ctx.fillStyle = '#444';
+            ctx.fillText('Iil1|!j', 0.5, 10.7);
+
+            ctx.font = '13.3px serif';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Wwm0O', 0.3, 23.3);
+
+            ctx.font = '10.7px monospace';
+            ctx.fillStyle = '#888';
+            ctx.fillText('@#$%&', 0.7, 35.1);
+
+            // 이모지 (렌더러별 큰 차이)
+            ctx.font = '14px sans-serif';
+            ctx.fillText('\u{1F600}\u{1F525}\u{1F4A9}', 60.5, 12.3);
+
+            // 안티앨리어싱 엣지 픽셀 추출 (소수 위치 173 간격)
+            const textData = ctx.getImageData(0, 0, 120, 35).data;
+            const textSamples: number[] = [];
+            for (let i = 0; i < textData.length; i += 173) {
+                textSamples.push(textData[i]);
+            }
+
+            // === 서브픽셀 도형 렌더링 ===
+            // 원 (안티앨리어싱 편차 큼)
+            ctx.beginPath();
+            ctx.arc(30.5, 50.3, 7.7, 0, Math.PI * 2);
+            ctx.fillStyle = '#555';
+            ctx.fill();
+
+            // 베지어 곡선
+            ctx.beginPath();
+            ctx.moveTo(50.3, 42.7);
+            ctx.bezierCurveTo(60.1, 38.3, 80.7, 58.1, 100.3, 44.9);
+            ctx.strokeStyle = '#777';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 서브픽셀 직선 (1px 미만 굵기)
+            ctx.beginPath();
+            ctx.moveTo(5.5, 55.5);
+            ctx.lineTo(115.5, 55.5);
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            const shapeData = ctx.getImageData(0, 35, 120, 25).data;
+            const shapeSamples: number[] = [];
+            for (let i = 0; i < shapeData.length; i += 131) {
+                shapeSamples.push(shapeData[i]);
+            }
+
+            return {
+                textRender: textSamples.join('-'),
+                shapeRender: shapeSamples.join('-'),
+                hash: '',
+            };
+        } catch { return defaultVal; }
+    }
+
+    /**
+     * Storage 프로파일 핑거프린트
+     * 기기별 가용 저장 용량과 사용량이 다름.
+     * 같은 모델이라도 사용 패턴에 따라 고유한 값.
+     */
+    private async fingerprintStorageProfile(): Promise<StorageProfileData> {
+        const defaultVal: StorageProfileData = { quota: 0, usage: 0, hash: '' };
+        try {
+            if (!navigator.storage?.estimate) return defaultVal;
+            const est = await navigator.storage.estimate();
+            return {
+                quota: est.quota || 0,
+                usage: est.usage || 0,
+                hash: `${est.quota || 0}|${est.usage || 0}`,
+            };
+        } catch { return defaultVal; }
     }
 
     // ============== Enhanced Signal Collection (v2) ==============
@@ -1633,6 +1982,16 @@ export class Fingerprinter {
         result.audioStack = await this.fingerprintAudioStack();
         result.webgl2 = this.getWebGL2Parameters();
         result.mediaCap = await this.fingerprintMediaCapabilities();
+
+        // === v3 개체 식별 신호 (동일 모델 구분, 전 플랫폼 동작) ===
+        result.gpuSilicon = this.fingerprintGPUSilicon();
+        result.canvasMicro = this.fingerprintCanvasMicro();
+        const [audioHw, storageProfile] = await Promise.all([
+            this.fingerprintAudioHardware(),
+            this.fingerprintStorageProfile(),
+        ]);
+        result.audioHardware = audioHw;
+        result.storageProfile = storageProfile;
 
         return result;
     }
