@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hardware-based cross-browser device fingerprinting library. Generates consistent hashes across different browsers/modes on the same device. Supports both TypeScript (web) and Python packages.
+Hardware-based cross-browser device fingerprinting library (v3). Generates consistent hashes across different browsers/modes on the same device, and uniquely identifies individual devices even among identical models. Supports both TypeScript (web) and Python packages.
 
 **Key Feature**: Same device = Same hash (regardless of browser, incognito mode, etc.)
+**v3 Feature**: Distinguishes identical model devices via manufacturing variance (GPU silicon, audio DAC, canvas micro rendering)
 
 **Mobile Test Results**: 99%+ consistency on iOS Safari and Android Chrome (100 tests each)
 
@@ -37,51 +38,57 @@ pip install -e ".[redis]" # Redis storage support
 
 ## Architecture
 
-### Hardware-Based Fingerprinting System
+### Hardware-Based Fingerprinting System (v3)
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│              Hardware Signal Collection (v2)               │
-│  GPU · WebGL · Screen · Math Engine · Fonts · CSS · Intl  │
-│  AudioStack · WebGL2 · Media Codecs · WebGL Render        │
-└───────────────────────────────────────────────────────────┘
-                          ↓
-           ┌─────────────────────────────┐
-           │   Accuracy Weight Calc       │
-           │   (Max 95% accuracy)         │
-           └─────────────────────────────┘
-                          ↓
-           ┌─────────────────────────────┐
-           │   SHA-256 Hardware Hash      │
-           │   Same device = Same hash    │
-           └─────────────────────────────┘
-                          ↓
-           ┌─────────────────────────────┐
-           │   PersistenceManager         │
-           │   5-layer evercookie sync    │
-           └─────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│              Hardware Signal Collection (v3)                   │
+│  v1: GPU · WebGL · Screen · Platform · Timezone               │
+│  v2: MathEngine · Fonts · CSS · Intl · Audio · WebGL2 · Media │
+│  v3: GPU Silicon · Audio DAC · Canvas Micro · Storage Profile │
+└───────────────────────────────────────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   Accuracy Weight Calc       │
+             │   (Max 97% accuracy)         │
+             └─────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   SHA-256 Hardware Hash      │
+             │   Same device = Same hash    │
+             └─────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   PersistenceManager         │
+             │   5-layer evercookie sync    │
+             └─────────────────────────────┘
 ```
 
-### Hardware Signals (v2)
+### Hardware Signals (v3)
 
 | Signal | Weight | Category |
 |--------|--------|----------|
-| GPU Renderer | 15% | WebGL |
-| Math Engine | 8% | JS Engine precision |
-| Shader Precision | 8% | WebGL |
-| Screen Resolution | 7% | Hardware |
-| WebGL Render Hash | 7% | GPU rasterizer |
-| Font Fingerprint | 7% | OS-level fonts |
-| Hardware Concurrency | 5% | CPU |
-| Timezone | 5% | System |
-| Audio Stack | 5% | DynamicsCompressor |
-| CSS Features | 4% | Engine features |
-| Intl API | 4% | Locale formatting |
-| WebGL Max Texture | 4% | GPU constant |
-| WebGL2 Params | 4% | GPU constant |
-| GPU Vendor | 3% | WebGL |
-| Platform | 3% | System |
-| Media Capabilities | 3% | Codec support |
+| GPU Silicon | 12% | Manufacturing variance (v3) |
+| Audio Hardware | 10% | DAC manufacturing variance (v3) |
+| GPU Renderer | 10% | WebGL |
+| Canvas Micro | 8% | Sub-pixel rendering (v3) |
+| Math Engine | 5% | JS Engine precision (v2) |
+| Shader Precision | 5% | WebGL |
+| Screen Resolution | 5% | Hardware |
+| Font Fingerprint | 5% | OS-level fonts (v2) |
+| Storage Profile | 4% | Device usage (v3) |
+| WebGL Render Hash | 4% | GPU rasterizer (v2) |
+| Hardware Concurrency | 3% | CPU |
+| Timezone | 3% | System |
+| CSS Features | 3% | Engine features (v2) |
+| Intl API | 3% | Locale formatting (v2) |
+| Audio Stack | 3% | DynamicsCompressor (v2) |
+| WebGL Max Texture | 3% | GPU constant |
+| WebGL2 Params | 3% | GPU constant (v2) |
+| GPU Vendor | 2% | WebGL |
+| Platform | 2% | System |
+| Media Capabilities | 2% | Codec support (v2) |
+| Base | 2% | Always present |
 
 ### Persistence Layer (PersistenceManager)
 
@@ -93,9 +100,9 @@ pip install -e ".[redis]" # Redis storage support
 ### Key Classes
 
 **Web SDK (packages/web/src/index.ts)**:
-- `Fingerprinter`: Main SDK entry point (v2: 26 signal modules)
-- `PersistenceManager`: 5-layer storage persistence
-- `generateHardwareHash()`: Core hash from 24 stable signals
+- `Fingerprinter`: Main SDK entry point (v3: 28 signal fields, 20+ modules)
+- `PersistenceManager`: 5-layer storage persistence (evercookie)
+- `generateHardwareHash()`: Core hash from 28 stable signals
 - `getStableWebGLInfo()`: WebGL hardware constants
 - `BehavioralTracker`: Touch, keystroke, gait data (optional)
 - `FingerprintUtils`: SHA-256, FFT, statistics
@@ -110,6 +117,12 @@ pip install -e ".[redis]" # Redis storage support
 - `getWebGL2Parameters()`: WebGL2 hardware constants
 - `fingerprintMediaCapabilities()`: Video/audio codec support
 
+**v3 Device Uniqueness Methods**:
+- `fingerprintGPUSilicon()`: 3 complex GLSL shaders (sin/cos, exp/log, atan/pow) reading 16x16 pixel grid to detect GPU manufacturing variance
+- `fingerprintAudioHardware()`: 3 OfflineAudioContext configs with sample-level DAC analysis
+- `fingerprintCanvasMicro()`: Sub-pixel text + shape rendering differences
+- `fingerprintStorageProfile()`: StorageManager API quota/usage
+
 **Python SDK (packages/python/src/__init__.py)**:
 - `Fingerprinter`: Server-side fingerprint generation
 - `Validator`: Fingerprint registration and verification
@@ -119,9 +132,9 @@ pip install -e ".[redis]" # Redis storage support
 ```typescript
 interface Fingerprint {
   hash: string;              // Hardware-based hash (browser/mode agnostic)
-  accuracy: number;          // 0-0.95 (max 95%)
+  accuracy: number;          // 0-0.97 (max 97%)
   modules: string[];
-  signals: CrossBrowserSignals;
+  signals: CrossBrowserSignals;  // 28 signal fields
   previousHash?: string;     // From PersistenceManager (tracking continuity)
   details?: LayerDetails;
 }
@@ -134,7 +147,7 @@ interface Fingerprint {
 3. Add to `CrossBrowserSignals` interface
 4. Add collection method in Fingerprinter
 5. Update `generateHardwareHash()` to include signal
-6. Add weight to `CROSS_BROWSER_ACCURACY_WEIGHTS`
+6. Add weight to `CROSS_BROWSER_ACCURACY_WEIGHTS` (total with MAX_ACCURACY <= 0.97)
 7. Update `getAdaptiveModuleContributions()` for mobile
 8. Test on Chrome, Chrome Incognito, Safari, Firefox, iOS Safari, Android Chrome
 

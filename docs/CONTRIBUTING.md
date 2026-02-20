@@ -1,8 +1,8 @@
 # 기여 가이드
 
-> Advanced Fingerprinting 프로젝트에 기여하는 방법
+> Advanced Fingerprinting v3 프로젝트에 기여하는 방법
 
-환영합니다! 🎉 이 문서는 프로젝트에 기여하고자 하는 분들을 위한 가이드입니다.
+환영합니다! 이 문서는 프로젝트에 기여하고자 하는 분들을 위한 가이드입니다.
 
 ## 시작하기
 
@@ -81,13 +81,13 @@ git checkout -b feature/your-feature-name
 - 2칸 들여쓰기
 
 ```typescript
-// ✅ Good
+// Good
 function calculateFingerprint(data: SensorData): string {
   const normalized = normalizeData(data);
   return hashFunction(normalized);
 }
 
-// ❌ Bad
+// Bad
 function calculateFingerprint(data) {
     const normalized = normalizeData(data)
     return hashFunction(normalized)
@@ -101,7 +101,7 @@ function calculateFingerprint(data) {
 - Type hints 권장
 
 ```python
-# ✅ Good
+# Good
 def calculate_fingerprint(data: SensorData) -> str:
     normalized = normalize_data(data)
     return hash_function(normalized)
@@ -132,15 +132,16 @@ def calculate_fingerprint(data: SensorData) -> str:
 | `refactor` | 리팩토링 |
 | `test` | 테스트 추가/수정 |
 | `chore` | 빌드/설정 변경 |
+| `perf` | 성능 개선 |
 
 ### 예시
 
 ```bash
-feat(mems): add gyroscope cross-axis error analysis
+feat(v3): add GPU silicon manufacturing variance detection
 
-- Implement cross-axis error calculation
-- Add unit tests for edge cases
-- Update documentation
+- Implement 3 complex GLSL shaders (sin/cos, exp/log, atan/pow)
+- Read 16x16 pixel grid for floating-point rounding differences
+- Add accuracy weight: GPU_SILICON: 0.12
 
 Closes #123
 ```
@@ -155,7 +156,7 @@ Closes #123
 - [ ] 모든 테스트가 통과합니다
 - [ ] 새 기능에 대한 테스트를 추가했습니다
 - [ ] 문서를 업데이트했습니다
-- [ ] CHANGELOG.md를 업데이트했습니다
+- [ ] 크로스-브라우저 테스트를 완료했습니다
 
 ### PR 템플릿
 
@@ -169,6 +170,14 @@ Closes #123
 - [ ] 문서 수정
 - [ ] 리팩토링
 
+## 크로스-브라우저 테스트
+- [ ] Chrome 일반
+- [ ] Chrome 시크릿
+- [ ] Safari
+- [ ] Firefox
+- [ ] iOS Safari
+- [ ] Android Chrome
+
 ## 관련 이슈
 Closes #
 
@@ -178,69 +187,95 @@ Closes #
 
 ---
 
-## 새 모듈 추가하기
+## 새 신호 추가하기
 
-새로운 핑거프린팅 모듈을 추가하려면:
+새로운 핑거프린팅 신호를 추가하려면 아래 단계를 따르세요.
 
-### 1. 새 신호 추가 (CrossBrowserSignals)
+### 1. 데이터 타입 인터페이스 추가
 
 ```typescript
 // packages/web/src/index.ts
 
-// 1. CrossBrowserSignals 인터페이스에 신호 추가
-export interface CrossBrowserSignals {
-  // ... 기존 신호들 ...
-  /** 새로운 하드웨어 신호 */
-  yourNewSignal: string;
+/** 새 신호 데이터 */
+interface YourSignalData {
+  feature1: number;
+  feature2: string;
 }
+```
 
-// 2. generateHardwareHash()에서 신호 수집 및 해시에 포함
+### 2. CrossBrowserSignals에 해시 필드 추가
+
+```typescript
+export interface CrossBrowserSignals {
+  // ... 기존 28개 필드 ...
+  /** 새 신호 해시 */
+  yourSignalHash: string;
+}
+```
+
+### 3. 수집 메서드 추가
+
+```typescript
+private async fingerprintYourSignal(): Promise<YourSignalData> {
+  try {
+    // 신호 수집 로직
+    return { feature1: ..., feature2: ... };
+  } catch {
+    return { feature1: 0, feature2: '' };
+  }
+}
+```
+
+### 4. generateHardwareHash()에 통합
+
+```typescript
 private async generateHardwareHash(signatures: LayerDetails) {
+  // ... 기존 코드 ...
+
+  // 새 신호 수집 및 해시
+  const yourSignalData = await this.fingerprintYourSignal();
+  const yourSignalHash = await FingerprintUtils.sha256(
+    JSON.stringify(yourSignalData)
+  );
+
+  // signals에 추가
   const signals: CrossBrowserSignals = {
     // ... 기존 신호들 ...
-    yourNewSignal: this.collectYourSignal(),
+    yourSignalHash,
   };
 
-  // 해시 데이터에 포함
+  // stableData에 포함
   const stableData = [
     // ... 기존 데이터 ...
-    signals.yourNewSignal,
+    yourSignalHash,
   ].join('|');
 }
+```
 
-// 3. CROSS_BROWSER_ACCURACY_WEIGHTS에 가중치 추가
+### 5. 가중치 추가
+
+```typescript
 const CROSS_BROWSER_ACCURACY_WEIGHTS = {
   // ... 기존 가중치 ...
-  YOUR_NEW_SIGNAL: 0.05,  // 가중치 (총합 <= 0.80)
+  YOUR_SIGNAL: 0.05,    // 가중치 (전체 합 <= MAX_ACCURACY)
+  MAX_ACCURACY: 0.97,   // 필요시 상향 조정
 };
 ```
 
-### 2. 테스트 작성
-
-```typescript
-// packages/web/src/__tests__/fingerprinter.test.ts
-describe('Fingerprinter', () => {
-  it('should include yourNewSignal in signals', async () => {
-    const fp = new Fingerprinter();
-    const result = await fp.generate();
-
-    expect(result.signals.yourNewSignal).toBeDefined();
-  });
-});
-```
-
-### 3. 크로스-브라우저 검증
+### 6. 크로스-브라우저 검증
 
 새 신호 추가 시 필수 테스트:
-1. Chrome 일반 모드 vs Chrome 시크릿 모드 → 동일 값
-2. Chrome vs Safari vs Firefox → 동일 값
-3. iOS Safari vs Android Chrome → 동일 값 (모바일)
+1. Chrome 일반 vs Chrome 시크릿 → **동일 값**
+2. Chrome vs Safari vs Firefox → **동일 값**
+3. iOS Safari vs Android Chrome → **동일 값** (모바일)
+4. 동일 모델 기기 간 → **다른 값** (v3 수준 신호인 경우)
 
-### 4. 문서 업데이트
+### 7. 문서 업데이트
 
-- README.md의 하드웨어 신호 테이블 업데이트
-- docs/API_REFERENCE.md의 CrossBrowserSignals 업데이트
-- docs/ARCHITECTURE.md의 신호 가중치 테이블 업데이트
+- `README.md`의 하드웨어 신호 테이블 업데이트
+- `docs/API_REFERENCE.md`의 CrossBrowserSignals 업데이트
+- `docs/ARCHITECTURE.md`의 신호 가중치 테이블 업데이트
+- `CLAUDE.md`의 가중치 및 메서드 목록 업데이트
 
 ---
 
@@ -261,7 +296,7 @@ describe('Fingerprinter', () => {
 어떻게 동작해야 하는지
 
 ## 환경
-- OS: [e.g. Windows 11, macOS 14]
+- OS: [e.g. Windows 11, macOS 14, iOS 18]
 - 브라우저: [e.g. Chrome 120]
 - SDK 버전: [e.g. 1.0.0]
 ```
@@ -275,6 +310,9 @@ describe('Fingerprinter', () => {
 ## 사용 사례
 이 기능이 어떤 문제를 해결하는지
 
+## 크로스-브라우저 안정성
+이 신호가 시크릿 모드/다른 브라우저에서도 안정적인지
+
 ## 구현 제안 (선택)
 어떻게 구현할 수 있을지에 대한 아이디어
 ```
@@ -284,14 +322,15 @@ describe('Fingerprinter', () => {
 ## 코드 리뷰
 
 리뷰어로서:
+- 크로스-브라우저 안정성 확인
+- 시크릿 모드에서의 일관성 검증
+- 성능 영향 평가
 - 건설적인 피드백 제공
-- 질문과 제안 구분
-- 좋은 코드에 대한 칭찬도 잊지 않기
 
 리뷰 받는 입장:
 - 리뷰어의 의견 존중
+- 크로스-브라우저 테스트 결과 첨부
 - 결정에 대한 근거 설명
-- 빠른 응답 유지
 
 ---
 
@@ -300,5 +339,3 @@ describe('Fingerprinter', () => {
 - 디스코드: [서버 링크]
 - 이메일: maintainers@example.com
 - 이슈 트래커: GitHub Issues
-
-감사합니다! 🙏

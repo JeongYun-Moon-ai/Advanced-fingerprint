@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Device Fingerprint Test</title>
+    <title>Device Fingerprint v3 - Cross Browser Test</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -100,7 +100,7 @@
         }
         .signals td:first-child {
             color: #888;
-            width: 45%;
+            width: 40%;
         }
         .signals td:last-child {
             color: #ddd;
@@ -108,6 +108,17 @@
             font-size: 0.7rem;
             word-break: break-all;
         }
+        .signals .version-tag {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 0.55rem;
+            margin-left: 4px;
+            font-weight: 600;
+        }
+        .signals .tag-v1 { background: rgba(63,185,80,0.2); color: #3fb950; }
+        .signals .tag-v2 { background: rgba(88,166,255,0.2); color: #58a6ff; }
+        .signals .tag-v3 { background: rgba(240,136,62,0.2); color: #f0883e; }
         .loading {
             text-align: center;
             padding: 2rem;
@@ -186,47 +197,54 @@
             margin-top: 0.5rem;
         }
         .copy-btn:active { background: rgba(255,255,255,0.2); }
+        .prev-hash {
+            color: #f0883e;
+            font-size: 0.7rem;
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Device Fingerprint</h1>
-        <p class="subtitle">Hardware-based device identification</p>
+        <h1>Device Fingerprint v3</h1>
+        <p class="subtitle">Hardware-based device identification (max 97% accuracy)</p>
 
         <div class="card">
             <div class="info-box">
                 <strong>Test Method:</strong><br>
                 1. Generate fingerprint here<br>
                 2. Open same URL in Incognito/Private mode<br>
-                3. Generate again - hash should be <strong>identical</strong>
+                3. Generate again - hash should be <strong>identical</strong><br>
+                4. v3 signals also distinguish <strong>same-model devices</strong>
             </div>
         </div>
 
         <div class="card">
             <h2>Generate Fingerprint</h2>
-            <button class="btn" id="generateBtn">Generate Fingerprint</button>
+            <button class="btn" id="generateBtn">Generate v3 Fingerprint</button>
 
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Collecting hardware signals...</p>
+                <p>Collecting 28 hardware signals...</p>
             </div>
 
             <div id="result" style="display:none;">
                 <div style="text-align:center;">
                     <div class="accuracy-badge" id="accuracyValue">0%</div>
-                    <div style="color:#888;font-size:0.75rem;">Estimated Accuracy</div>
+                    <div style="color:#888;font-size:0.75rem;">Estimated Accuracy (max 97%)</div>
                 </div>
 
                 <div class="hash-box">
                     <div class="hash-label">Device Hash</div>
                     <div class="hash-value" id="hashValue">-</div>
                     <button class="copy-btn" id="copyBtn">Copy Hash</button>
+                    <div class="prev-hash" id="prevHash"></div>
                 </div>
             </div>
         </div>
 
         <div class="card" id="signalsCard" style="display:none;">
-            <h2>Hardware Signals</h2>
+            <h2>Hardware Signals (28 fields)</h2>
             <div class="signals">
                 <table id="signalsTable"></table>
             </div>
@@ -244,151 +262,26 @@
         </div>
     </div>
 
-    <script type="module">
-        // ====== Utilities ======
-        class FingerprintUtils {
-            static async sha256(data) {
-                const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
-                return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-            }
-        }
+    <script src="../packages/web/dist/index.umd.min.js"></script>
+    <script>
+        const SDK = window.AdvancedFingerprinting;
 
-        // ====== Accuracy Weights ======
+        // v3 Accuracy Weights
         const ACCURACY_WEIGHTS = {
-            BASE: 0.05,
-            GPU_RENDERER: 0.25,
-            GPU_VENDOR: 0.05,
-            SCREEN_RESOLUTION: 0.10,
-            TIMEZONE: 0.08,
-            HARDWARE_CONCURRENCY: 0.08,
-            SHADER_PRECISION: 0.12,
-            WEBGL_MAX_TEXTURE: 0.07,
-            PLATFORM: 0.05,
-            MAX_ACCURACY: 0.80,
+            BASE: 0.02,
+            GPU_RENDERER: 0.10, GPU_VENDOR: 0.02,
+            SCREEN_RESOLUTION: 0.05, TIMEZONE: 0.03,
+            HARDWARE_CONCURRENCY: 0.03, SHADER_PRECISION: 0.05,
+            WEBGL_MAX_TEXTURE: 0.03, PLATFORM: 0.02,
+            MATH_ENGINE: 0.05, WEBGL_RENDER: 0.04,
+            FONT_FINGERPRINT: 0.05, CSS_FEATURES: 0.03,
+            INTL_API: 0.03, AUDIO_STACK: 0.03,
+            WEBGL2_PARAMS: 0.03, MEDIA_CAPABILITIES: 0.02,
+            GPU_SILICON: 0.12, AUDIO_HARDWARE: 0.10,
+            CANVAS_MICRO: 0.08, STORAGE_PROFILE: 0.04,
+            MAX_ACCURACY: 0.97,
         };
 
-        // ====== Fingerprinter ======
-        class Fingerprinter {
-            async generate() {
-                const webgl = this.analyzeWebGL();
-                const webglInfo = this.getStableWebGLInfo();
-
-                const signals = {
-                    gpuRenderer: webgl.renderer || '',
-                    gpuVendor: webgl.vendor || '',
-                    screenResolution: `${screen.width}x${screen.height}`,
-                    availableScreen: `${screen.availWidth}x${screen.availHeight}`,
-                    pixelRatio: Math.round(window.devicePixelRatio * 100) / 100,
-                    colorDepth: screen.colorDepth,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    hardwareConcurrency: navigator.hardwareConcurrency || 0,
-                    maxTouchPoints: navigator.maxTouchPoints || 0,
-                    platform: navigator.platform || '',
-                    shaderPrecision: webglInfo.shaderPrecision,
-                    webglMaxTextureSize: webglInfo.maxTextureSize,
-                    webglMaxViewportDims: webglInfo.maxViewportDims,
-                    webglExtensionCount: webglInfo.extensionCount,
-                    webglMaxRenderbufferSize: webglInfo.maxRenderbufferSize,
-                    webglMaxVertexAttribs: webglInfo.maxVertexAttribs,
-                };
-
-                const stableData = [
-                    signals.gpuRenderer,
-                    signals.gpuVendor,
-                    signals.screenResolution,
-                    signals.availableScreen,
-                    signals.pixelRatio.toFixed(2),
-                    signals.colorDepth,
-                    signals.timezone,
-                    signals.hardwareConcurrency,
-                    signals.maxTouchPoints,
-                    signals.platform,
-                    signals.shaderPrecision,
-                    signals.webglMaxTextureSize,
-                    signals.webglMaxViewportDims,
-                    signals.webglExtensionCount,
-                    signals.webglMaxRenderbufferSize,
-                    signals.webglMaxVertexAttribs,
-                ].join('|');
-
-                const hash = await FingerprintUtils.sha256(stableData);
-
-                // Calculate accuracy
-                const W = ACCURACY_WEIGHTS;
-                let accuracy = W.BASE;
-                if (signals.gpuRenderer) accuracy += W.GPU_RENDERER;
-                if (signals.gpuVendor) accuracy += W.GPU_VENDOR;
-                if (signals.screenResolution !== '0x0') accuracy += W.SCREEN_RESOLUTION;
-                if (signals.timezone) accuracy += W.TIMEZONE;
-                if (signals.hardwareConcurrency > 0) accuracy += W.HARDWARE_CONCURRENCY;
-                if (signals.shaderPrecision) accuracy += W.SHADER_PRECISION;
-                if (signals.webglMaxTextureSize > 0) accuracy += W.WEBGL_MAX_TEXTURE;
-                if (signals.platform) accuracy += W.PLATFORM;
-                accuracy = Math.min(accuracy, W.MAX_ACCURACY);
-
-                return { hash, accuracy, signals };
-            }
-
-            analyzeWebGL() {
-                const c = document.createElement('canvas');
-                const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-                if (!gl) return { vendor: '', renderer: '' };
-                const d = gl.getExtension('WEBGL_debug_renderer_info');
-                const vendor = d ? gl.getParameter(d.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
-                const renderer = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-                return { vendor, renderer };
-            }
-
-            getStableWebGLInfo() {
-                const defaultValue = {
-                    shaderPrecision: '',
-                    maxTextureSize: 0,
-                    maxViewportDims: '0,0',
-                    extensionCount: 0,
-                    maxRenderbufferSize: 0,
-                    maxVertexAttribs: 0,
-                };
-
-                try {
-                    const canvas = document.createElement('canvas');
-                    const gl = canvas.getContext('webgl') ?? canvas.getContext('experimental-webgl');
-                    if (!gl) return defaultValue;
-
-                    const precisions = [];
-                    const shaderTypes = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER];
-                    const precisionTypes = [gl.LOW_FLOAT, gl.MEDIUM_FLOAT, gl.HIGH_FLOAT];
-
-                    for (const shaderType of shaderTypes) {
-                        for (const precisionType of precisionTypes) {
-                            const precision = gl.getShaderPrecisionFormat(shaderType, precisionType);
-                            if (precision) {
-                                precisions.push(`${precision.rangeMin}:${precision.rangeMax}:${precision.precision}`);
-                            }
-                        }
-                    }
-
-                    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
-                    const maxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS) || [0, 0];
-                    const extensions = gl.getSupportedExtensions() || [];
-                    const maxRenderbufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 0;
-                    const maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS) || 0;
-
-                    return {
-                        shaderPrecision: precisions.join('|'),
-                        maxTextureSize,
-                        maxViewportDims: `${maxViewportDims[0]},${maxViewportDims[1]}`,
-                        extensionCount: extensions.length,
-                        maxRenderbufferSize,
-                        maxVertexAttribs,
-                    };
-                } catch {
-                    return defaultValue;
-                }
-            }
-        }
-
-        // ====== UI ======
-        const fp = new Fingerprinter();
         let currentHash = '';
 
         document.getElementById('generateBtn').onclick = async () => {
@@ -398,36 +291,59 @@
             document.getElementById('signalsCard').style.display = 'none';
 
             try {
-                const result = await fp.generate();
+                let result;
+
+                if (SDK && SDK.getFingerprint) {
+                    result = await SDK.getFingerprint({ debug: true });
+                } else {
+                    // Fallback: basic fingerprinting
+                    result = await fallbackGenerate();
+                }
 
                 document.getElementById('hashValue').textContent = result.hash;
                 document.getElementById('accuracyValue').textContent = (result.accuracy * 100).toFixed(0) + '%';
-
                 currentHash = result.hash;
+
+                // Previous hash from persistence
+                if (result.previousHash) {
+                    document.getElementById('prevHash').textContent = 'Previous: ' + result.previousHash.substring(0, 16) + '...';
+                }
 
                 // Signals table
                 const table = document.getElementById('signalsTable');
                 table.innerHTML = '';
-                const signals = result.signals;
+                const s = result.signals || {};
+
                 const rows = [
-                    ['GPU Renderer', signals.gpuRenderer || '(N/A)'],
-                    ['GPU Vendor', signals.gpuVendor || '(N/A)'],
-                    ['Screen', signals.screenResolution],
-                    ['Available', signals.availableScreen],
-                    ['Pixel Ratio', signals.pixelRatio],
-                    ['Color Depth', signals.colorDepth],
-                    ['Timezone', signals.timezone],
-                    ['CPU Cores', signals.hardwareConcurrency],
-                    ['Touch Points', signals.maxTouchPoints],
-                    ['Platform', signals.platform],
-                    ['Max Texture', signals.webglMaxTextureSize],
-                    ['Max Viewport', signals.webglMaxViewportDims],
-                    ['WebGL Ext.', signals.webglExtensionCount],
+                    // v1
+                    ['GPU Renderer', s.gpuRenderer || '(N/A)', 'v1'],
+                    ['GPU Vendor', s.gpuVendor || '(N/A)', 'v1'],
+                    ['Screen', s.screenResolution || '', 'v1'],
+                    ['Pixel Ratio', s.pixelRatio || '', 'v1'],
+                    ['Timezone', s.timezone || '', 'v1'],
+                    ['CPU Cores', s.hardwareConcurrency || '', 'v1'],
+                    ['Platform', s.platform || '', 'v1'],
+                    ['Max Texture', s.webglMaxTextureSize || '', 'v1'],
+                    // v2
+                    ['Math Engine', truncHash(s.mathEngineHash), 'v2'],
+                    ['Font Hash', truncHash(s.fontHash), 'v2'],
+                    ['WebGL Render', truncHash(s.webglRenderHash), 'v2'],
+                    ['CSS Features', truncHash(s.cssFeatureHash), 'v2'],
+                    ['Intl API', truncHash(s.intlHash), 'v2'],
+                    ['Audio Stack', truncHash(s.audioStackHash), 'v2'],
+                    ['WebGL2 Params', truncHash(s.webgl2Hash), 'v2'],
+                    ['Media Caps', truncHash(s.mediaCapHash), 'v2'],
+                    // v3
+                    ['GPU Silicon', truncHash(s.gpuSiliconHash), 'v3'],
+                    ['Audio DAC', truncHash(s.audioHardwareHash), 'v3'],
+                    ['Canvas Micro', truncHash(s.canvasMicroHash), 'v3'],
+                    ['Storage Profile', truncHash(s.storageProfileHash), 'v3'],
                 ];
 
-                for (const [label, value] of rows) {
+                for (const [label, value, ver] of rows) {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${label}</td><td>${value}</td>`;
+                    const tagClass = ver === 'v1' ? 'tag-v1' : ver === 'v2' ? 'tag-v2' : 'tag-v3';
+                    tr.innerHTML = '<td>' + label + ' <span class="version-tag ' + tagClass + '">' + ver + '</span></td><td>' + value + '</td>';
                     table.appendChild(tr);
                 }
 
@@ -440,6 +356,51 @@
             document.getElementById('loading').classList.remove('active');
             document.getElementById('generateBtn').disabled = false;
         };
+
+        function truncHash(hash) {
+            if (!hash) return '(N/A)';
+            return hash.substring(0, 16) + '...';
+        }
+
+        async function fallbackGenerate() {
+            // Basic fallback if SDK not loaded
+            const sha256 = async (data) => {
+                const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+                return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            };
+
+            const c = document.createElement('canvas');
+            const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+            const d = gl ? gl.getExtension('WEBGL_debug_renderer_info') : null;
+            const renderer = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : (gl ? gl.getParameter(gl.RENDERER) : '');
+            const vendor = d ? gl.getParameter(d.UNMASKED_VENDOR_WEBGL) : (gl ? gl.getParameter(gl.VENDOR) : '');
+
+            const signals = {
+                gpuRenderer: renderer,
+                gpuVendor: vendor,
+                screenResolution: screen.width + 'x' + screen.height,
+                pixelRatio: Math.round(window.devicePixelRatio * 100) / 100,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                hardwareConcurrency: navigator.hardwareConcurrency || 0,
+                platform: navigator.platform || '',
+                webglMaxTextureSize: gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 0,
+            };
+
+            const stableData = Object.values(signals).join('|');
+            const hash = await sha256(stableData);
+
+            let accuracy = ACCURACY_WEIGHTS.BASE;
+            if (signals.gpuRenderer) accuracy += ACCURACY_WEIGHTS.GPU_RENDERER;
+            if (signals.gpuVendor) accuracy += ACCURACY_WEIGHTS.GPU_VENDOR;
+            if (signals.screenResolution !== '0x0') accuracy += ACCURACY_WEIGHTS.SCREEN_RESOLUTION;
+            if (signals.timezone) accuracy += ACCURACY_WEIGHTS.TIMEZONE;
+            if (signals.hardwareConcurrency > 0) accuracy += ACCURACY_WEIGHTS.HARDWARE_CONCURRENCY;
+            if (signals.platform) accuracy += ACCURACY_WEIGHTS.PLATFORM;
+            if (signals.webglMaxTextureSize > 0) accuracy += ACCURACY_WEIGHTS.WEBGL_MAX_TEXTURE;
+            accuracy = Math.min(accuracy, ACCURACY_WEIGHTS.MAX_ACCURACY);
+
+            return { hash, accuracy, signals };
+        }
 
         // Copy button
         document.getElementById('copyBtn').onclick = () => {

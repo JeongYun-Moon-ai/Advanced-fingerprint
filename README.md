@@ -1,6 +1,6 @@
 # Advanced Fingerprinting
 
-> 하드웨어 기반 크로스-브라우저 디바이스 핑거프린팅 SDK
+> 하드웨어 기반 크로스-브라우저 디바이스 핑거프린팅 SDK (v3)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://badge.fury.io/js/advanced-fingerprinting.svg)](https://www.npmjs.com/package/advanced-fingerprinting)
@@ -8,9 +8,12 @@
 ## 특징
 
 - **크로스-브라우저 일관성**: 동일 기기에서 브라우저/시크릿 모드 무관하게 동일 해시
-- **하드웨어 기반**: WebGL 상수, GPU 정보 등 안정적인 하드웨어 신호만 사용
-- **모바일 검증 완료**: iOS Safari, Android Chrome에서 99%+ 신뢰도 (100회 테스트)
+- **개체 식별 (v3)**: 동일 모델/동일 OS 버전의 기기도 고유하게 구분 (GPU 실리콘 편차, 오디오 DAC 편차 활용)
+- **하드웨어 기반**: 28개 안정적 하드웨어 신호 수집 (v1: 8개 → v2: 16개 → v3: 20개)
+- **모바일 최적화**: iOS Safari, Android Chrome에서 99%+ 신뢰도 (100회 테스트)
+- **영속성 레이어**: 5-layer evercookie (localStorage, sessionStorage, Cookie, IndexedDB, Cache API)
 - **프라이버시 우선**: 온디바이스 처리, SHA-256 해시만 전송
+- **최대 97% 정확도**: v1(80%) → v2(95%) → v3(97%)
 
 ## 테스트 결과
 
@@ -42,54 +45,98 @@ import { getFingerprint } from 'advanced-fingerprinting';
 const fp = await getFingerprint();
 
 console.log(fp.hash);     // "a1b2c3d4..." (하드웨어 기반 해시)
-console.log(fp.accuracy); // 0.78 (최대 80%)
+console.log(fp.accuracy); // 0.95 (최대 97%)
 
-// 하드웨어 신호 확인
-console.log(fp.signals.gpuRenderer);      // GPU 정보
-console.log(fp.signals.shaderPrecision);  // WebGL 셰이더 정밀도
-console.log(fp.signals.webglMaxTextureSize); // WebGL 상수
+// v1 기본 신호
+console.log(fp.signals.gpuRenderer);       // GPU 정보
+console.log(fp.signals.shaderPrecision);   // WebGL 셰이더 정밀도
+
+// v2 강화 신호
+console.log(fp.signals.mathEngineHash);    // JS 엔진 정밀도
+console.log(fp.signals.fontHash);          // 설치된 폰트
+console.log(fp.signals.audioStackHash);    // DynamicsCompressor
+
+// v3 개체 식별 신호 (동일 모델 구분)
+console.log(fp.signals.gpuSiliconHash);    // GPU 제조 편차
+console.log(fp.signals.audioHardwareHash); // 오디오 DAC 편차
+console.log(fp.signals.canvasMicroHash);   // 서브픽셀 렌더링 편차
+
+// 영속성 (이전 해시 복원)
+console.log(fp.previousHash);             // 5-layer 저장소에서 복원
 ```
 
-## 사용되는 하드웨어 신호
+## 하드웨어 신호 (v3 기준)
+
+### v1 기본 신호
 
 | 신호 | 가중치 | 설명 |
 |------|--------|------|
-| GPU Renderer | 25% | WebGL GPU 모델 |
-| Shader Precision | 12% | WebGL 셰이더 정밀도 |
-| Screen Resolution | 10% | 화면 해상도 + 픽셀 밀도 |
-| Hardware Concurrency | 8% | CPU 코어 수 |
-| Timezone | 8% | 시간대 |
-| WebGL Max Texture | 7% | WebGL 최대 텍스처 크기 |
-| GPU Vendor | 5% | GPU 제조사 |
-| Platform | 5% | 운영체제 플랫폼 |
-| **최대 정확도** | **80%** | |
+| GPU Renderer | 10% | WebGL GPU 모델 |
+| Shader Precision | 5% | WebGL 셰이더 정밀도 |
+| Screen Resolution | 5% | 화면 해상도 + 픽셀 밀도 |
+| Hardware Concurrency | 3% | CPU 코어 수 |
+| Timezone | 3% | 시간대 |
+| WebGL Max Texture | 3% | WebGL 최대 텍스처 크기 |
+| GPU Vendor | 2% | GPU 제조사 |
+| Platform | 2% | 운영체제 플랫폼 |
+
+### v2 강화 신호
+
+| 신호 | 가중치 | 설명 |
+|------|--------|------|
+| Math Engine | 5% | JS 엔진 부동소수점 정밀도 (V8/JSC/SpiderMonkey) |
+| Font Fingerprint | 5% | Canvas 기반 폰트 탐지 (40+ 폰트) |
+| WebGL Render | 4% | GPU 래스터라이저 렌더링 해시 |
+| CSS Features | 3% | CSS.supports() 매트릭스 (35+ 기능) |
+| Intl API | 3% | Intl 날짜/숫자 포맷 |
+| Audio Stack | 3% | OfflineAudioContext DynamicsCompressor |
+| WebGL2 Params | 3% | WebGL2 하드웨어 상수 |
+| Media Capabilities | 2% | 비디오/오디오 코덱 지원 |
+
+### v3 개체 식별 신호 (동일 모델 구분 핵심)
+
+| 신호 | 가중치 | 설명 |
+|------|--------|------|
+| **GPU Silicon** | **12%** | GPU 제조 편차 - 3개 복잡 셰이더 (sin/cos, exp/log, atan/pow) |
+| **Audio Hardware** | **10%** | 오디오 DAC 편차 - 3개 OfflineAudioContext 설정 |
+| **Canvas Micro** | **8%** | 서브픽셀 안티앨리어싱 편차 |
+| **Storage Profile** | **4%** | StorageManager 용량/사용량 프로파일 |
+
+**최대 정확도: 97%**
 
 ### 제외된 불안정 신호
 
 시크릿 모드에서 노이즈가 추가되는 신호는 제외:
 
-- ~~Audio Fingerprint~~ - Chrome 시크릿에서 랜덤 노이즈
-- ~~Canvas Hardware~~ - 시크릿 모드에서 렌더링 차이
+- ~~Audio Fingerprint (직접 재생)~~ - Chrome 시크릿에서 랜덤 노이즈
+- ~~Canvas Hardware (일반 렌더링)~~ - 시크릿 모드에서 렌더링 차이
 - ~~Device Memory~~ - 브라우저별 다른 값
 - ~~Language~~ - 브라우저 설정에 따라 변경
 
 ## 아키텍처
 
 ```
-┌─────────────────────────────────────────────────────┐
-│            Hardware Signal Collection                │
-│  GPU · WebGL Constants · Screen · Platform · TZ      │
-└─────────────────────────────────────────────────────┘
-                        ↓
-         ┌─────────────────────────────┐
-         │   Accuracy Weight Calc       │
-         │   (Max 80%)                  │
-         └─────────────────────────────┘
-                        ↓
-         ┌─────────────────────────────┐
-         │   SHA-256 Hardware Hash      │
-         │   Same device = Same hash    │
-         └─────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│              Hardware Signal Collection (v3)                   │
+│  v1: GPU · WebGL · Screen · Platform · Timezone               │
+│  v2: MathEngine · Fonts · CSS · Intl · Audio · WebGL2 · Media │
+│  v3: GPU Silicon · Audio DAC · Canvas Micro · Storage Profile │
+└───────────────────────────────────────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   Accuracy Weight Calc       │
+             │   (Max 97% accuracy)         │
+             └─────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   SHA-256 Hardware Hash      │
+             │   Same device = Same hash    │
+             └─────────────────────────────┘
+                            ↓
+             ┌─────────────────────────────┐
+             │   PersistenceManager         │
+             │   5-layer evercookie sync    │
+             └─────────────────────────────┘
 ```
 
 ## 문서

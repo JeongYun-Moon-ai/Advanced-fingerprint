@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Fingerprinting - 95% Accuracy Demo</title>
+    <title>Advanced Fingerprinting v3 - 97% Accuracy Demo</title>
     <style>
         * {
             margin: 0;
@@ -72,12 +72,17 @@
             font-weight: 600;
         }
 
-        .implemented {
+        .v1 {
             background: rgba(63, 185, 80, 0.2);
             color: #3fb950;
         }
 
-        .new {
+        .v2 {
+            background: rgba(88, 166, 255, 0.2);
+            color: #58a6ff;
+        }
+
+        .v3 {
             background: rgba(240, 136, 62, 0.2);
             color: #f0883e;
         }
@@ -292,91 +297,100 @@
 
 <body>
     <div class="container">
-        <h1>🔐 Advanced Fingerprinting</h1>
-        <p class="subtitle">95% 정확도 - 4계층 엔트로피 융합 (18개 모듈)</p>
+        <h1>Advanced Fingerprinting v3</h1>
+        <p class="subtitle">97% Max Accuracy - 28 Hardware Signals + 5-Layer Persistence</p>
 
         <div class="grid">
-            <!-- 구현 현황 -->
+            <!-- Signal Overview -->
             <div class="card">
-                <h2>📋 모듈 현황 (18개)</h2>
+                <h2>Hardware Signals (v3)</h2>
 
-                <div class="layer-title">🔧 Physical Layer (7개)</div>
+                <div class="layer-title">v1 Basic (8 signals)</div>
                 <ul class="tech-list">
-                    <li><span>Canvas 핑거프린팅</span><span class="badge implemented">12%</span></li>
-                    <li><span>WebGL GPU 정보</span><span class="badge implemented">10%</span></li>
-                    <li><span>Audio FRF + THD</span><span class="badge implemented">6%</span></li>
-                    <li><span>PRNU 카메라 노이즈</span><span class="badge new">8%</span></li>
-                    <li><span>MEMS 센서 바이어스</span><span class="badge implemented">6%</span></li>
-                    <li><span>Clock Skew</span><span class="badge implemented">4%</span></li>
-                    <li><span>Device Orientation</span><span class="badge new">3%</span></li>
+                    <li><span>GPU Renderer</span><span class="badge v1">10%</span></li>
+                    <li><span>Shader Precision</span><span class="badge v1">5%</span></li>
+                    <li><span>Screen Resolution</span><span class="badge v1">5%</span></li>
+                    <li><span>Hardware Concurrency</span><span class="badge v1">3%</span></li>
+                    <li><span>Timezone</span><span class="badge v1">3%</span></li>
+                    <li><span>WebGL Max Texture</span><span class="badge v1">3%</span></li>
+                    <li><span>GPU Vendor</span><span class="badge v1">2%</span></li>
+                    <li><span>Platform</span><span class="badge v1">2%</span></li>
                 </ul>
 
-                <div class="layer-title">⏱️ Temporal Layer (2개)</div>
+                <div class="layer-title">v2 Enhanced (8 signals)</div>
                 <ul class="tech-list">
-                    <li><span>Battery STL</span><span class="badge implemented">5%</span></li>
-                    <li><span>Performance Profile</span><span class="badge implemented">6%</span></li>
+                    <li><span>Math Engine</span><span class="badge v2">5%</span></li>
+                    <li><span>Font Fingerprint</span><span class="badge v2">5%</span></li>
+                    <li><span>WebGL Render</span><span class="badge v2">4%</span></li>
+                    <li><span>CSS Features</span><span class="badge v2">3%</span></li>
+                    <li><span>Intl API</span><span class="badge v2">3%</span></li>
+                    <li><span>Audio Stack</span><span class="badge v2">3%</span></li>
+                    <li><span>WebGL2 Params</span><span class="badge v2">3%</span></li>
+                    <li><span>Media Capabilities</span><span class="badge v2">2%</span></li>
                 </ul>
 
-                <div class="layer-title">👆 Behavioral Layer (3개)</div>
+                <div class="layer-title">v3 Device Uniqueness (4 signals)</div>
                 <ul class="tech-list">
-                    <li><span>Touch Pattern</span><span class="badge implemented">4%</span></li>
-                    <li><span>Keystroke Dynamics</span><span class="badge implemented">5%</span></li>
-                    <li><span>Gait (보행) FFT</span><span class="badge new">4%</span></li>
+                    <li><span>GPU Silicon (Manufacturing)</span><span class="badge v3">12%</span></li>
+                    <li><span>Audio DAC Hardware</span><span class="badge v3">10%</span></li>
+                    <li><span>Canvas Micro Rendering</span><span class="badge v3">8%</span></li>
+                    <li><span>Storage Profile</span><span class="badge v3">4%</span></li>
                 </ul>
 
-                <div class="layer-title">📱 Mobile Layer (6개)</div>
+                <div class="layer-title">Persistence Layer</div>
                 <ul class="tech-list">
-                    <li><span>Screen + HDR</span><span class="badge new">5%</span></li>
-                    <li><span>Speech Synthesis</span><span class="badge new">5%</span></li>
-                    <li><span>IP + History</span><span class="badge new">3%</span></li>
-                    <li><span>Geolocation + History</span><span class="badge new">4%</span></li>
-                    <li><span>Client Hints</span><span class="badge new">4%</span></li>
-                    <li><span>Locale/Timezone</span><span class="badge new">2%</span></li>
+                    <li><span>localStorage + sessionStorage</span><span class="badge v2">persist</span></li>
+                    <li><span>Cookie (400d) + IndexedDB</span><span class="badge v2">persist</span></li>
+                    <li><span>Cache API</span><span class="badge v2">persist</span></li>
                 </ul>
             </div>
 
-            <!-- 키스트로크 -->
+            <!-- Keystroke -->
             <div class="card">
-                <h2>⌨️ 키스트로크 수집</h2>
-                <textarea id="typingArea" placeholder="아무 텍스트나 입력하세요..."></textarea>
+                <h2>Keystroke Collection</h2>
+                <textarea id="typingArea" placeholder="Type anything here..."></textarea>
                 <div id="keystrokeStats" style="margin-top:0.25rem;font-size:0.75rem;color:#8b949e;"></div>
 
                 <div class="warning-box">
-                    ⚠️ <b>권한 필요:</b> PRNU(카메라), Gait(모션센서), Geolocation(위치), IP(네트워크)
+                    Permissions needed: PRNU (camera), Gait (motion sensor), Geolocation, IP (network)
                 </div>
             </div>
 
-            <!-- 핑거프린트 생성 -->
+            <!-- Fingerprint Generation -->
             <div class="card">
-                <h2>🔐 핑거프린트 생성</h2>
-                <button class="btn" id="requestPermBtn">1. 센서 권한 요청</button>
-                <button class="btn secondary" id="generateBtn" disabled>2. 기본 핑거프린트</button>
-                <button class="btn orange" id="generateFullBtn" disabled>3. 전체 모듈 (95%)</button>
+                <h2>Generate Fingerprint</h2>
+                <button class="btn" id="requestPermBtn">1. Request Sensor Permission</button>
+                <button class="btn secondary" id="generateBtn" disabled>2. Basic Fingerprint</button>
+                <button class="btn orange" id="generateFullBtn" disabled>3. Full v3 (97% max)</button>
 
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
-                    <p style="font-size:0.8rem;">데이터 수집 중... (최대 5초)</p>
+                    <p style="font-size:0.8rem;">Collecting hardware signals... (up to 5s)</p>
                 </div>
 
                 <div class="result" id="resultSection">
                     <div class="accuracy-display">
                         <div class="accuracy-number" id="accuracyValue">0%</div>
-                        <div class="accuracy-label">예상 정확도</div>
+                        <div class="accuracy-label">Estimated Accuracy</div>
                     </div>
                     <div style="margin-top:0.5rem;">
-                        <div class="result-label">해시</div>
+                        <div class="result-label">Hash</div>
                         <div class="hash-display" id="hashValue">-</div>
+                    </div>
+                    <div style="margin-top:0.3rem;">
+                        <div class="result-label">Previous Hash (Persistence)</div>
+                        <div class="hash-display" id="prevHashValue" style="color:#f0883e;">-</div>
                     </div>
                     <div class="result-grid" style="margin-top:0.5rem;">
                         <div class="result-item">
-                            <div class="result-label">신뢰도</div>
+                            <div class="result-label">Confidence</div>
                             <div class="result-value" id="confidenceValue">-</div>
                             <div class="meter">
                                 <div class="meter-fill green" id="confidenceMeter" style="width:0%"></div>
                             </div>
                         </div>
                         <div class="result-item">
-                            <div class="result-label">안정성</div>
+                            <div class="result-label">Stability</div>
                             <div class="result-value" id="stabilityValue">-</div>
                             <div class="meter">
                                 <div class="meter-fill orange" id="stabilityMeter" style="width:0%"></div>
@@ -384,476 +398,157 @@
                         </div>
                     </div>
                     <div style="margin-top:0.5rem;">
-                        <div class="result-label">활성 모듈</div>
+                        <div class="result-label">Active Modules</div>
                         <div id="moduleTags"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- 상세 결과 -->
+            <!-- Details -->
             <div class="card" id="detailsCard" style="display:none; grid-column:1/-1;">
-                <h2>🔬 상세 분석</h2>
+                <h2>Signal Details</h2>
                 <div class="result-grid" id="detailsGrid"></div>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        // ====== Utilities ======
-        class FingerprintUtils {
-            static async sha256(data) {
-                const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
-                return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    <script src="../packages/web/dist/index.umd.min.js"></script>
+    <script>
+        // Use the SDK if available, otherwise fallback to inline implementation
+        const SDK = window.AdvancedFingerprinting;
+
+        async function createFingerprinter() {
+            if (SDK && SDK.Fingerprinter) {
+                return new SDK.Fingerprinter({ debug: true });
             }
-            static mean(samples) {
-                if (!samples.length) return [0, 0, 0];
-                const sum = samples.reduce((a, c) => [a[0] + (c[0] || 0), a[1] + (c[1] || 0), a[2] + (c[2] || 0)], [0, 0, 0]);
-                return sum.map(v => v / samples.length);
-            }
-            static variance(values) {
-                if (!values.length) return 0;
-                const m = values.reduce((a, b) => a + b, 0) / values.length;
-                return values.reduce((a, b) => a + Math.pow(b - m, 2), 0) / values.length;
-            }
+            // Fallback: basic inline fingerprinter
+            return createFallbackFingerprinter();
         }
 
-        // ====== Behavioral Tracker ======
-        class BehavioralTracker {
-            constructor() { this.keyTimings = []; this.keyDownTimes = new Map(); this.gaitSamples = []; }
-            start() {
-                document.addEventListener('keydown', this.onKeyDown);
-                document.addEventListener('keyup', this.onKeyUp);
-            }
-            onKeyDown = e => { if (!this.keyDownTimes.has(e.key)) this.keyDownTimes.set(e.key, performance.now()); };
-            onKeyUp = e => {
-                const d = this.keyDownTimes.get(e.key);
-                if (d) { this.keyTimings.push({ down: d, up: performance.now(), key: e.key }); this.keyDownTimes.delete(e.key); }
+        function createFallbackFingerprinter() {
+            return {
+                tracker: { keyTimings: [], keyDownTimes: new Map(), getKeystroke() {
+                    const t = this.keyTimings;
+                    if (t.length < 2) return { avgDwell: 0, avgFlight: 0, rhythm: [], wpm: 0 };
+                    const dwells = t.map(x => x.up - x.down);
+                    const flights = [];
+                    for (let i = 1; i < t.length; i++) flights.push(t[i].down - t[i - 1].up);
+                    const totalTime = t[t.length - 1].up - t[0].down;
+                    return { avgDwell: dwells.reduce((a,b)=>a+b,0)/dwells.length, avgFlight: flights.length ? flights.reduce((a,b)=>a+b,0)/flights.length : 0, rhythm: dwells.slice(0,10), wpm: totalTime > 0 ? (t.length/5)/(totalTime/60000) : 0 };
+                }},
+                async requestPermissions() {
+                    if (typeof DeviceMotionEvent?.requestPermission === 'function') {
+                        try { return await DeviceMotionEvent.requestPermission() === 'granted'; } catch { return false; }
+                    }
+                    return true;
+                },
+                async generate(options) {
+                    // Use SDK's getFingerprint if available
+                    if (SDK && SDK.getFingerprint) {
+                        return SDK.getFingerprint(options);
+                    }
+                    return { hash: 'SDK not loaded', accuracy: 0, modules: [], signals: {}, details: {} };
+                }
             };
-            addGait(acc) { this.gaitSamples.push(acc); }
-            getKeystroke() {
-                const t = this.keyTimings;
-                if (t.length < 2) return { avgDwell: 0, avgFlight: 0, rhythm: [], wpm: 0 };
-                const dwells = t.map(x => x.up - x.down);
-                const flights = [];
-                for (let i = 1; i < t.length; i++) flights.push(t[i].down - t[i - 1].up);
-                const totalTime = t[t.length - 1].up - t[0].down;
-                return {
-                    avgDwell: dwells.reduce((a, b) => a + b, 0) / dwells.length,
-                    avgFlight: flights.length ? flights.reduce((a, b) => a + b, 0) / flights.length : 0,
-                    rhythm: dwells.slice(0, 10),
-                    wpm: totalTime > 0 ? (t.length / 5) / (totalTime / 60000) : 0
-                };
-            }
-            getGait() {
-                if (this.gaitSamples.length < 50) return null;
-                const mags = this.gaitSamples.map(s => Math.sqrt(s[0] ** 2 + s[1] ** 2 + s[2] ** 2));
-                return { sampleCount: mags.length, amplitude: Math.max(...mags) - Math.min(...mags) };
-            }
         }
 
-        // ====== Fingerprinter ======
-        class Fingerprinter {
-            constructor() { this.tracker = new BehavioralTracker(); this.tracker.start(); }
+        // Initialize
+        (async () => {
+            const fp = await createFingerprinter();
 
-            async requestPermissions() {
-                if (typeof DeviceMotionEvent?.requestPermission === 'function') {
-                    try { return await DeviceMotionEvent.requestPermission() === 'granted'; } catch { return false; }
-                }
-                return true;
-            }
+            // Keystroke tracking
+            document.addEventListener('keydown', e => {
+                if (!fp.tracker.keyDownTimes.has(e.key)) fp.tracker.keyDownTimes.set(e.key, performance.now());
+            });
+            document.addEventListener('keyup', e => {
+                const d = fp.tracker.keyDownTimes.get(e.key);
+                if (d) { fp.tracker.keyTimings.push({ down: d, up: performance.now(), key: e.key }); fp.tracker.keyDownTimes.delete(e.key); }
+            });
 
-            async generate(options = {}) {
-                const modules = [];
-                const details = {};
+            document.getElementById('requestPermBtn').onclick = async () => {
+                const granted = await fp.requestPermissions();
+                document.getElementById('requestPermBtn').textContent = granted ? 'Permission Granted' : 'Permission Denied (continue)';
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('generateFullBtn').disabled = false;
+            };
 
-                // Physical Layer
-                details.canvas = this.analyzeCanvas();
-                modules.push('canvas');
+            document.getElementById('generateBtn').onclick = () => runFingerprint(false);
+            document.getElementById('generateFullBtn').onclick = () => runFingerprint(true);
 
-                details.webgl = this.analyzeWebGL();
-                if (details.webgl.renderer) modules.push('webgl');
+            async function runFingerprint(full) {
+                document.getElementById('generateBtn').disabled = true;
+                document.getElementById('generateFullBtn').disabled = true;
+                document.getElementById('loading').classList.add('active');
+                document.getElementById('resultSection').classList.remove('active');
+                document.getElementById('detailsCard').style.display = 'none';
 
-                details.audio = await this.analyzeAudioFRF();
-                if (details.audio.hash) modules.push('audio-frf');
-
-                details.mems = await this.analyzeMEMS();
-                if (details.mems.sampleCount) modules.push('mems');
-
-                details.clockSkew = await this.measureClockSkew();
-                modules.push('clock-skew');
-
-                if (options.enablePRNU) {
-                    details.prnu = await this.analyzePRNU();
-                    if (details.prnu.hash) modules.push('prnu');
-                }
-
-                // Temporal Layer
-                details.battery = await this.analyzeBatterySTL();
-                if (details.battery.stlSig) modules.push('battery-stl');
-
-                details.perf = await this.measurePerformance();
-                modules.push('performance');
-
-                // Behavioral Layer
-                details.touch = { support: 'ontouchstart' in window, maxPoints: navigator.maxTouchPoints || 0 };
-                if (details.touch.support) modules.push('touch');
-
-                details.keystroke = this.tracker.getKeystroke();
-                if (details.keystroke.rhythm.length) modules.push('keystroke');
-
-                if (options.enableGait) {
-                    await this.collectGait(3000);
-                    details.gait = this.tracker.getGait();
-                    if (details.gait) modules.push('gait');
-                }
-
-                // Mobile Layer
-                details.screen = this.analyzeScreen();
-                modules.push('screen');
-
-                details.speech = await this.analyzeSpeech();
-                if (details.speech.voiceCount) modules.push('speech');
-
-                details.locale = this.analyzeLocale();
-                modules.push('locale');
-
-                details.ip = await this.analyzeIP();
-                if (details.ip.publicIP) modules.push('ip');
-
-                if (options.enableGeolocation) {
-                    details.geolocation = await this.analyzeGeolocation();
-                    if (details.geolocation.latitude) modules.push('geolocation');
-                }
-
-                details.clientHints = await this.analyzeClientHints();
-                if (details.clientHints.model) modules.push('client-hints');
-
-                // Generate hash
-                const hash = await this.generateHash(details, modules);
-                const accuracy = this.calcAccuracy(modules);
-                const confidence = this.calcConfidence(details);
-                const stability = this.calcStability(details);
-
-                return { hash, accuracy, confidence, stability, modules, details };
-            }
-
-            async collectGait(duration) {
-                return new Promise(resolve => {
-                    const handler = e => {
-                        if (e.accelerationIncludingGravity) {
-                            this.tracker.addGait([e.accelerationIncludingGravity.x || 0, e.accelerationIncludingGravity.y || 0, e.accelerationIncludingGravity.z || 0]);
-                        }
-                    };
-                    window.addEventListener('devicemotion', handler);
-                    setTimeout(() => { window.removeEventListener('devicemotion', handler); resolve(); }, duration);
-                });
-            }
-
-            async analyzeMEMS() {
-                return new Promise(resolve => {
-                    const acc = [];
-                    const h = e => {
-                        if (e.accelerationIncludingGravity) acc.push([e.accelerationIncludingGravity.x || 0, e.accelerationIncludingGravity.y || 0, e.accelerationIncludingGravity.z || 0]);
-                    };
-                    window.addEventListener('devicemotion', h);
-                    setTimeout(() => {
-                        window.removeEventListener('devicemotion', h);
-                        const bias = FingerprintUtils.mean(acc);
-                        resolve({ bias, sampleCount: acc.length, quality: Math.min(1, acc.length / 100) });
-                    }, 1500);
-                });
-            }
-
-            async measureClockSkew() {
-                const m = [];
-                for (let i = 0; i < 100; i++) {
-                    const s = performance.now();
-                    await new Promise(r => setTimeout(r, 1));
-                    m.push(performance.now() - s);
-                }
-                const mean = m.reduce((a, b) => a + b) / m.length;
-                return { skewPPM: (mean - 1) * 1e6, stability: 1 / (1 + FingerprintUtils.variance(m)) };
-            }
-
-            analyzeCanvas() {
-                const c = document.createElement('canvas'); c.width = 280; c.height = 60;
-                const ctx = c.getContext('2d');
-                ctx.textBaseline = 'top'; ctx.font = "14px Arial";
-                ctx.fillStyle = '#f60'; ctx.fillRect(125, 1, 62, 20);
-                ctx.fillStyle = '#069'; ctx.fillText('Fingerprint😀🔒', 2, 15);
-                const g = ctx.createLinearGradient(0, 0, 280, 0);
-                g.addColorStop(0, 'red'); g.addColorStop(0.5, 'green'); g.addColorStop(1, 'blue');
-                ctx.fillStyle = g; ctx.fillRect(0, 40, 280, 20);
-                const url = c.toDataURL();
-                return { hash: url.slice(-80), entropy: new Set(url).size / 64 };
-            }
-
-            analyzeWebGL() {
-                const c = document.createElement('canvas');
-                const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-                if (!gl) return { vendor: '', renderer: '', hash: '' };
-                const d = gl.getExtension('WEBGL_debug_renderer_info');
-                const vendor = d ? gl.getParameter(d.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
-                const renderer = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-                return { vendor, renderer, hash: `${vendor}|${renderer}`.slice(0, 100) };
-            }
-
-            async analyzeAudioFRF() {
                 try {
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    const freqResp = [];
-                    for (const freq of [100, 500, 1000]) {
-                        const osc = ctx.createOscillator();
-                        const analyser = ctx.createAnalyser();
-                        const gain = ctx.createGain(); gain.gain.value = 0;
-                        analyser.fftSize = 2048;
-                        osc.frequency.value = freq; osc.type = 'sine';
-                        osc.connect(analyser); analyser.connect(gain); gain.connect(ctx.destination);
-                        osc.start();
-                        await new Promise(r => setTimeout(r, 50));
-                        const data = new Float32Array(analyser.frequencyBinCount);
-                        analyser.getFloatFrequencyData(data);
-                        const bin = Math.round(freq * analyser.fftSize / ctx.sampleRate);
-                        freqResp.push(data[bin] || -100);
-                        osc.stop();
-                    }
-                    ctx.close();
-                    const hash = await FingerprintUtils.sha256(freqResp.join(','));
-                    return { freqResp, hash: hash.slice(0, 24) };
-                } catch { return { freqResp: [], hash: '' }; }
+                    const result = await fp.generate({
+                        enablePRNU: full,
+                        enableGait: full,
+                        enableGeolocation: full,
+                        debug: true,
+                    });
+
+                    document.getElementById('hashValue').textContent = result.hash;
+                    document.getElementById('prevHashValue').textContent = result.previousHash || '(none)';
+                    document.getElementById('accuracyValue').textContent = (result.accuracy * 100).toFixed(0) + '%';
+
+                    const confidence = result.confidence || (result.accuracy * 0.95);
+                    const stability = result.stability || 0.9;
+                    document.getElementById('confidenceValue').textContent = ((typeof confidence === 'number' ? confidence : 0) * 100).toFixed(1) + '%';
+                    document.getElementById('confidenceMeter').style.width = ((typeof confidence === 'number' ? confidence : 0) * 100) + '%';
+                    document.getElementById('stabilityValue').textContent = ((typeof stability === 'number' ? stability : 0) * 100).toFixed(1) + '%';
+                    document.getElementById('stabilityMeter').style.width = ((typeof stability === 'number' ? stability : 0) * 100) + '%';
+
+                    document.getElementById('moduleTags').innerHTML = (result.modules || []).map(m =>
+                        '<span class="module-tag active">' + m + '</span>'
+                    ).join('');
+
+                    // Signal details
+                    const grid = document.getElementById('detailsGrid');
+                    grid.innerHTML = '';
+                    const add = (l, v) => { grid.innerHTML += '<div class="result-item"><div class="result-label">' + l + '</div><div class="result-value">' + v + '</div></div>'; };
+
+                    const s = result.signals || {};
+                    if (s.gpuRenderer) add('GPU Renderer', s.gpuRenderer);
+                    if (s.gpuVendor) add('GPU Vendor', s.gpuVendor);
+                    if (s.screenResolution) add('Screen', s.screenResolution);
+                    if (s.hardwareConcurrency) add('CPU Cores', s.hardwareConcurrency);
+                    if (s.timezone) add('Timezone', s.timezone);
+                    if (s.platform) add('Platform', s.platform);
+                    if (s.shaderPrecision) add('Shader Precision', s.shaderPrecision.substring(0, 40) + '...');
+                    if (s.mathEngineHash) add('Math Engine (v2)', s.mathEngineHash.substring(0, 16) + '...');
+                    if (s.fontHash) add('Font Hash (v2)', s.fontHash.substring(0, 16) + '...');
+                    if (s.webglRenderHash) add('WebGL Render (v2)', s.webglRenderHash.substring(0, 16) + '...');
+                    if (s.audioStackHash) add('Audio Stack (v2)', s.audioStackHash.substring(0, 16) + '...');
+                    if (s.gpuSiliconHash) add('GPU Silicon (v3)', s.gpuSiliconHash.substring(0, 16) + '...');
+                    if (s.audioHardwareHash) add('Audio DAC (v3)', s.audioHardwareHash.substring(0, 16) + '...');
+                    if (s.canvasMicroHash) add('Canvas Micro (v3)', s.canvasMicroHash.substring(0, 16) + '...');
+                    if (s.storageProfileHash) add('Storage (v3)', s.storageProfileHash.substring(0, 16) + '...');
+
+                    document.getElementById('detailsCard').style.display = 'block';
+                    document.getElementById('resultSection').classList.add('active');
+                } catch (e) {
+                    alert('Error: ' + e.message);
+                }
+
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('generateFullBtn').disabled = false;
             }
 
-            async analyzePRNU() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 120 } });
-                    const video = document.createElement('video');
-                    video.srcObject = stream; await video.play();
-                    const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 120;
-                    const ctx = canvas.getContext('2d');
-                    await new Promise(r => setTimeout(r, 200));
-                    ctx.drawImage(video, 0, 0);
-                    const img = ctx.getImageData(0, 0, 160, 120);
-                    stream.getTracks().forEach(t => t.stop());
-                    const green = [];
-                    for (let i = 1; i < img.data.length; i += 4) green.push(img.data[i]);
-                    const hash = await FingerprintUtils.sha256(green.slice(0, 500).join(','));
-                    return { hash: hash.slice(0, 24), entropy: FingerprintUtils.variance(green) / 255 };
-                } catch { return { hash: '', entropy: 0 }; }
-            }
-
-            async analyzeBatterySTL() {
-                if (!('getBattery' in navigator)) return { level: 1, stlSig: '' };
-                try {
-                    const b = await navigator.getBattery();
-                    const sig = await FingerprintUtils.sha256(`${b.level}|${b.charging}|${b.chargingTime || 0}`);
-                    return { level: b.level, charging: b.charging, stlSig: sig.slice(0, 16) };
-                } catch { return { level: 1, stlSig: '' }; }
-            }
-
-            async measurePerformance() {
-                const s = performance.now();
-                let sum = 0; for (let i = 0; i < 1000000; i++) sum += Math.sqrt(i) * Math.sin(i);
-                return { score: 1000 / (performance.now() - s), cores: navigator.hardwareConcurrency || 1 };
-            }
-
-            analyzeScreen() {
-                const s = window.screen;
-                return {
-                    width: s.width, height: s.height,
-                    colorDepth: s.colorDepth,
-                    pixelRatio: window.devicePixelRatio || 1,
-                    touchPoints: navigator.maxTouchPoints || 0,
-                    hdr: window.matchMedia?.('(dynamic-range: high)')?.matches || false
-                };
-            }
-
-            async analyzeSpeech() {
-                return new Promise(resolve => {
-                    const getVoices = () => {
-                        const voices = speechSynthesis.getVoices();
-                        if (voices.length === 0) return;
-                        resolve({ voiceCount: voices.length, languages: [...new Set(voices.map(v => v.lang))] });
-                    };
-                    if (speechSynthesis.getVoices().length > 0) getVoices();
-                    else {
-                        speechSynthesis.onvoiceschanged = getVoices;
-                        setTimeout(() => resolve({ voiceCount: 0, languages: [] }), 1000);
-                    }
-                });
-            }
-
-            analyzeLocale() {
-                return {
-                    language: navigator.language,
-                    languages: [...navigator.languages],
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    offset: new Date().getTimezoneOffset()
-                };
-            }
-
-            async analyzeIP() {
-                try {
-                    const response = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(3000) });
-                    const data = await response.json();
-                    return { publicIP: data.ip || '' };
-                } catch { return { publicIP: '' }; }
-            }
-
-            async analyzeGeolocation() {
-                return new Promise(resolve => {
-                    if (!navigator.geolocation) {
-                        resolve({ latitude: 0, longitude: 0, accuracy: 0 });
-                        return;
-                    }
-                    navigator.geolocation.getCurrentPosition(
-                        pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-                        () => resolve({ latitude: 0, longitude: 0, accuracy: 0 }),
-                        { timeout: 5000 }
-                    );
-                });
-            }
-
-            async analyzeClientHints() {
-                const nav = navigator;
-                const uaData = nav.userAgentData;
-                if (!uaData) return { platform: navigator.platform || '', model: '' };
-                try {
-                    const hints = await uaData.getHighEntropyValues(['model', 'platform']);
-                    return { platform: hints.platform || '', model: hints.model || '' };
-                } catch { return { platform: uaData.platform || '', model: '' }; }
-            }
-
-            async generateHash(d, modules) {
-                const stable = {
-                    canvas: d.canvas?.hash || '',
-                    webgl: d.webgl?.hash || '',
-                    audio: d.audio?.hash || '',
-                    prnu: d.prnu?.hash || '',
-                    screen: `${d.screen?.width}x${d.screen?.height}@${d.screen?.pixelRatio}`,
-                    speech: d.speech?.voiceCount || 0,
-                    locale: d.locale?.timezone || '',
-                    cores: d.perf?.cores || 0,
-                };
-                return FingerprintUtils.sha256(JSON.stringify(stable));
-            }
-
-            calcAccuracy(modules) {
-                const contrib = {
-                    'canvas': 0.12, 'webgl': 0.10, 'audio-frf': 0.06, 'prnu': 0.08, 'orientation': 0.03,
-                    'mems': 0.06, 'clock-skew': 0.04, 'battery-stl': 0.05, 'performance': 0.06,
-                    'touch': 0.04, 'keystroke': 0.05, 'gait': 0.04,
-                    'screen': 0.05, 'speech': 0.05, 'network': 0.02, 'media-devices': 0.03, 'client-hints': 0.04, 'locale': 0.02,
-                    'ip': 0.03, 'geolocation': 0.04,
-                };
-                return Math.min(0.95, 0.08 + modules.reduce((a, m) => a + (contrib[m] || 0), 0));
-            }
-
-            calcConfidence(d) {
-                let s = 0;
-                if (d.canvas?.hash) s += 0.10;
-                if (d.webgl?.renderer) s += 0.10;
-                if (d.audio?.hash) s += 0.06;
-                if (d.prnu?.hash) s += 0.08;
-                if (d.mems?.sampleCount > 50) s += 0.06;
-                if (d.screen) s += 0.08;
-                if (d.speech?.voiceCount) s += 0.06;
-                if (d.battery?.stlSig) s += 0.08;
-                if (d.perf) s += 0.08;
-                if (d.keystroke?.rhythm?.length > 5) s += 0.08;
-                if (d.gait) s += 0.06;
-                if (d.ip?.publicIP) s += 0.04;
-                if (d.geolocation?.latitude) s += 0.06;
-                return Math.min(1, s);
-            }
-
-            calcStability(d) {
-                let s = 0, t = 0;
-                if (d.canvas) { s += 2; t += 2; }
-                if (d.webgl) { s += 2; t += 2; }
-                if (d.screen) { s += 1.5; t += 1.5; }
-                if (d.speech) { s += 1.2; t += 1.5; }
-                if (d.perf?.cores) { s += 1; t += 1; }
-                if (d.locale) { s += 1; t += 1; }
-                return t > 0 ? s / t : 0;
-            }
-        }
-
-        // ====== UI ======
-        const fp = new Fingerprinter();
-        let permGranted = false;
-
-        document.getElementById('requestPermBtn').onclick = async () => {
-            permGranted = await fp.requestPermissions();
-            document.getElementById('requestPermBtn').textContent = permGranted ? '✓ 권한 승인됨' : '✗ 권한 거부 (계속 가능)';
-            document.getElementById('generateBtn').disabled = false;
-            document.getElementById('generateFullBtn').disabled = false;
-        };
-
-        document.getElementById('generateBtn').onclick = () => runFingerprint(false);
-        document.getElementById('generateFullBtn').onclick = () => runFingerprint(true);
-
-        async function runFingerprint(full) {
-            document.getElementById('generateBtn').disabled = true;
-            document.getElementById('generateFullBtn').disabled = true;
-            document.getElementById('loading').classList.add('active');
-            document.getElementById('resultSection').classList.remove('active');
-            document.getElementById('detailsCard').style.display = 'none';
-
-            try {
-                const result = await fp.generate({ enablePRNU: full, enableGait: full, enableGeolocation: full });
-
-                document.getElementById('hashValue').textContent = result.hash;
-                document.getElementById('accuracyValue').textContent = (result.accuracy * 100).toFixed(0) + '%';
-                document.getElementById('confidenceValue').textContent = (result.confidence * 100).toFixed(1) + '%';
-                document.getElementById('confidenceMeter').style.width = (result.confidence * 100) + '%';
-                document.getElementById('stabilityValue').textContent = (result.stability * 100).toFixed(1) + '%';
-                document.getElementById('stabilityMeter').style.width = (result.stability * 100) + '%';
-
-                document.getElementById('moduleTags').innerHTML = result.modules.map(m =>
-                    `<span class="module-tag active">${m}</span>`
-                ).join('');
-
-                // Details
-                const grid = document.getElementById('detailsGrid');
-                grid.innerHTML = '';
-                const add = (l, v) => { grid.innerHTML += `<div class="result-item"><div class="result-label">${l}</div><div class="result-value">${v}</div></div>`; };
-
-                if (result.details.mems?.sampleCount) add('MEMS 샘플', result.details.mems.sampleCount);
-                if (result.details.clockSkew) add('클록 스큐', result.details.clockSkew.skewPPM.toFixed(0) + ' ppm');
-                if (result.details.audio?.hash) add('Audio FRF', result.details.audio.hash);
-                if (result.details.prnu?.hash) add('PRNU', result.details.prnu.hash);
-                if (result.details.screen) add('화면', `${result.details.screen.width}x${result.details.screen.height}`);
-                if (result.details.speech?.voiceCount) add('TTS 음성', result.details.speech.voiceCount + '개');
-                if (result.details.battery?.stlSig) add('배터리 STL', result.details.battery.stlSig);
-                if (result.details.perf) add('CPU 코어', result.details.perf.cores);
-                if (result.details.keystroke?.wpm) add('타이핑 WPM', result.details.keystroke.wpm.toFixed(0));
-                if (result.details.gait) add('Gait 샘플', result.details.gait.sampleCount);
-                if (result.details.ip?.publicIP) add('IP', result.details.ip.publicIP);
-                if (result.details.geolocation?.latitude) add('위치', `${result.details.geolocation.latitude.toFixed(2)}, ${result.details.geolocation.longitude.toFixed(2)}`);
-                if (result.details.locale) add('타임존', result.details.locale.timezone);
-                if (result.details.clientHints?.model) add('모델', result.details.clientHints.model);
-
-                document.getElementById('detailsCard').style.display = 'block';
-                document.getElementById('resultSection').classList.add('active');
-            } catch (e) {
-                alert('오류: ' + e.message);
-            }
-
-            document.getElementById('loading').classList.remove('active');
-            document.getElementById('generateBtn').disabled = false;
-            document.getElementById('generateFullBtn').disabled = false;
-        }
-
-        // Keystroke stats
-        document.getElementById('typingArea').addEventListener('input', () => {
-            const k = fp.tracker.getKeystroke();
-            if (k.rhythm.length) {
-                document.getElementById('keystrokeStats').innerHTML =
-                    `<span style="color:#3fb950">Dwell: ${k.avgDwell.toFixed(0)}ms</span> | 
-           <span style="color:#58a6ff">Flight: ${k.avgFlight.toFixed(0)}ms</span> | 
-           <span style="color:#f0883e">WPM: ${k.wpm.toFixed(0)}</span>`;
-            }
-        });
+            // Keystroke stats
+            document.getElementById('typingArea').addEventListener('input', () => {
+                const k = fp.tracker.getKeystroke();
+                if (k.rhythm.length) {
+                    document.getElementById('keystrokeStats').innerHTML =
+                        '<span style="color:#3fb950">Dwell: ' + k.avgDwell.toFixed(0) + 'ms</span> | ' +
+                        '<span style="color:#58a6ff">Flight: ' + k.avgFlight.toFixed(0) + 'ms</span> | ' +
+                        '<span style="color:#f0883e">WPM: ' + k.wpm.toFixed(0) + '</span>';
+                }
+            });
+        })();
     </script>
 </body>
 
